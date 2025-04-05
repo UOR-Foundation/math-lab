@@ -49,3 +49,6 @@ export {
   setConfirmResolver,
   resolveActiveConfirm
 } from './implementations';
+
+// Export SDK for plugin development
+export * as sdk from './sdk';
