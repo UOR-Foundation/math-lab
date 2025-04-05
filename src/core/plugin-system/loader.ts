@@ -14,8 +14,21 @@ import { pluginRegistry } from './registry';
 import { createSandbox } from './sandbox';
 import { validateManifest } from './validator';
 
+// Plugin cache to reduce duplicate loading
+const pluginCache: Map<string, {
+  manifest: PluginManifest;
+  code: string;
+  timestamp: number;
+}> = new Map();
+
+// Default cache expiration time (1 hour in milliseconds)
+const CACHE_EXPIRATION_TIME = 60 * 60 * 1000;
+
+// Default plugin directory path
+const DEFAULT_PLUGIN_DIRECTORY = './plugins';
+
 /**
- * Load a plugin from a URL or source string
+ * Load a plugin from a URL, local ID, or source string
  * 
  * @param id Plugin ID or URL
  * @param options Loader options
@@ -26,41 +39,56 @@ export async function loadPlugin(
   options: PluginLoaderOptions = {}
 ): Promise<PluginInstance> {
   try {
-    // Step 1: Load the plugin manifest
-    const manifest = await loadManifest(id, options);
+    // Normalize the plugin ID
+    const normalizedId = normalizePluginId(id);
     
-    // Step 2: Validate the manifest
-    validateManifest(manifest);
+    // Step 1: Check if the plugin is in cache and not expired
+    const cached = getCachedPlugin(normalizedId, options);
+    let manifest = cached?.manifest;
+    let pluginCode = cached?.code;
     
-    // Step 3: Register the plugin with the registry if not already registered
+    // If not in cache, load it
+    if (!manifest || !pluginCode) {
+      // Step 2: Load the plugin manifest
+      manifest = await loadManifest(normalizedId, options);
+      
+      // Step 3: Validate the manifest
+      validateManifest(manifest);
+      
+      // Step 4: Load the plugin code
+      pluginCode = await loadPluginCode(manifest, options);
+      
+      // Step 5: Cache the plugin
+      cachePlugin(normalizedId, manifest, pluginCode);
+    }
+    
+    // Step 6: Register the plugin with the registry if not already registered
     if (!pluginRegistry.hasPlugin(manifest.id)) {
       pluginRegistry.register(manifest);
     }
     
-    // Step 4: Check if dependencies are satisfied
-    if (!pluginRegistry.areDependenciesSatisfied(manifest.id)) {
-      throw new Error(`Dependencies not satisfied for plugin ${manifest.id}`);
-    }
+    // Step 7: Check if dependencies are satisfied
+    await ensureDependenciesSatisfied(manifest, options);
     
-    // Step 5: Load the plugin code
-    const pluginCode = await loadPluginCode(manifest, options);
-    
-    // Step 6: Create plugin instance
+    // Step 8: Create plugin instance
     const instance = createPluginInstance(manifest, pluginCode, options);
     
-    // Step 7: Update registry with loaded plugin
+    // Step 9: Update registry with loaded plugin
     pluginRegistry.updatePlugin(manifest.id, instance, 'loaded');
     
     return instance;
   } catch (error) {
-    if (error instanceof Error) {
-      // Update registry with error status if the plugin was registered
-      if (id && pluginRegistry.hasPlugin(id)) {
-        pluginRegistry.setPluginError(id, error);
-      }
-      throw error;
+    // Ensure detailed error reporting
+    const errorMessage = formatErrorMessage(id, error);
+    const wrappedError = new Error(errorMessage);
+    
+    // Update registry with error status if the plugin was registered
+    if (id && pluginRegistry.hasPlugin(id)) {
+      pluginRegistry.setPluginError(id, wrappedError);
     }
-    throw new Error(`Unknown error loading plugin: ${String(error)}`);
+    
+    // Rethrow the formatted error
+    throw wrappedError;
   }
 }
 
@@ -103,11 +131,10 @@ export async function initializePlugin(
     // Enable the plugin
     pluginRegistry.enablePlugin(id);
   } catch (error) {
-    if (error instanceof Error) {
-      pluginRegistry.setPluginError(id, error);
-      throw error;
-    }
-    throw new Error(`Unknown error initializing plugin: ${String(error)}`);
+    const errorMessage = formatErrorMessage(id, error, 'initialization');
+    const wrappedError = new Error(errorMessage);
+    pluginRegistry.setPluginError(id, wrappedError);
+    throw wrappedError;
   }
 }
 
@@ -140,11 +167,167 @@ export async function unloadPlugin(id: string): Promise<void> {
     // Unregister the plugin
     pluginRegistry.unregisterPlugin(id);
   } catch (error) {
-    if (error instanceof Error) {
-      pluginRegistry.setPluginError(id, error);
-      throw error;
+    const errorMessage = formatErrorMessage(id, error, 'unloading');
+    const wrappedError = new Error(errorMessage);
+    pluginRegistry.setPluginError(id, wrappedError);
+    throw wrappedError;
+  }
+}
+
+/**
+ * Clear the plugin cache
+ * 
+ * @param pluginId Optional plugin ID to clear specific cache entry
+ */
+export function clearPluginCache(pluginId?: string): void {
+  if (pluginId) {
+    pluginCache.delete(pluginId);
+  } else {
+    pluginCache.clear();
+  }
+}
+
+/**
+ * Get information about cached plugins
+ * 
+ * @returns Array of cache information
+ */
+export function getCacheInfo(): Array<{
+  id: string;
+  name: string;
+  version: string;
+  cachedAt: Date;
+}> {
+  return Array.from(pluginCache.entries()).map(([id, cache]) => ({
+    id,
+    name: cache.manifest.name,
+    version: cache.manifest.version,
+    cachedAt: new Date(cache.timestamp)
+  }));
+}
+
+/**
+ * Normalize a plugin ID for consistent caching
+ * 
+ * @param id Plugin ID or URL
+ * @returns Normalized ID
+ */
+function normalizePluginId(id: string): string {
+  // Convert URLs to a consistent format
+  if (id.startsWith('http://') || id.startsWith('https://')) {
+    const url = new URL(id);
+    // Remove trailing slashes
+    return url.toString().replace(/\/$/, '');
+  }
+  
+  // Return local IDs as-is
+  return id;
+}
+
+/**
+ * Get a cached plugin if available and not expired
+ * 
+ * @param id Plugin ID
+ * @param options Loader options
+ * @returns Cached plugin or undefined
+ */
+function getCachedPlugin(
+  id: string,
+  options: PluginLoaderOptions
+): { manifest: PluginManifest; code: string } | undefined {
+  // Skip cache if explicitly disabled
+  if (options.noCache) {
+    return undefined;
+  }
+  
+  const cached = pluginCache.get(id);
+  if (!cached) {
+    return undefined;
+  }
+  
+  // Check if cache is expired
+  const now = Date.now();
+  const cacheExpiration = options.cacheExpiration || CACHE_EXPIRATION_TIME;
+  
+  if (now - cached.timestamp > cacheExpiration) {
+    // Cache is expired, remove it
+    pluginCache.delete(id);
+    return undefined;
+  }
+  
+  return {
+    manifest: cached.manifest,
+    code: cached.code
+  };
+}
+
+/**
+ * Cache a plugin for future use
+ * 
+ * @param id Plugin ID
+ * @param manifest Plugin manifest
+ * @param code Plugin code
+ */
+function cachePlugin(
+  id: string,
+  manifest: PluginManifest,
+  code: string
+): void {
+  pluginCache.set(id, {
+    manifest,
+    code,
+    timestamp: Date.now()
+  });
+}
+
+/**
+ * Ensure all dependencies for a plugin are satisfied
+ * 
+ * @param manifest Plugin manifest
+ * @param options Loader options
+ */
+async function ensureDependenciesSatisfied(
+  manifest: PluginManifest,
+  options: PluginLoaderOptions
+): Promise<void> {
+  // If no dependencies, they're satisfied by default
+  if (!manifest.dependencies || manifest.dependencies.length === 0) {
+    return;
+  }
+  
+  // Auto-load dependencies if not already loaded
+  for (const dep of manifest.dependencies) {
+    // Skip optional dependencies if not available
+    if (dep.optional) {
+      continue;
     }
-    throw new Error(`Unknown error unloading plugin: ${String(error)}`);
+    
+    const isLoaded = pluginRegistry.hasPlugin(dep.id) && 
+      pluginRegistry.getPlugin(dep.id)?.status !== 'error';
+    
+    // If dependency is not loaded, try to load it
+    if (!isLoaded && options.loadDependencies !== false) {
+      try {
+        // Recursively load the dependency with a reference to its source
+        const depOptions: PluginLoaderOptions = {
+          ...options,
+          url: options.pluginDirectory || DEFAULT_PLUGIN_DIRECTORY
+        };
+        
+        await loadPlugin(dep.id, depOptions);
+      } catch (error) {
+        if (!dep.optional) {
+          throw new Error(`Failed to load required dependency ${dep.id}: ${String(error)}`);
+        }
+        // Optional dependencies can fail without stopping the parent plugin
+        console.warn(`Failed to load optional dependency ${dep.id}: ${String(error)}`);
+      }
+    }
+  }
+  
+  // Final check to ensure all dependencies are satisfied
+  if (!pluginRegistry.areDependenciesSatisfied(manifest.id)) {
+    throw new Error(`Dependencies not satisfied for plugin ${manifest.id}`);
   }
 }
 
@@ -185,17 +368,38 @@ async function loadManifest(
   // If source is provided directly
   if (options.source) {
     try {
-      // Parse source as JSON
-      return JSON.parse(options.source);
+      // Parse source as JSON if it's a string
+      if (typeof options.source === 'string') {
+        return JSON.parse(options.source);
+      }
+      
+      // If source is an object with manifest property, use that
+      if (typeof options.source === 'object' && 'manifest' in options.source) {
+        return options.source.manifest as PluginManifest;
+      }
+      
+      // Otherwise, assume it's already a parsed manifest
+      return options.source as PluginManifest;
     } catch (error) {
       throw new Error(`Failed to parse plugin manifest from source: ${String(error)}`);
     }
   }
   
-  // If it's a local plugin ID, load it from the registry or local storage
-  // For now, we'll implement a placeholder that would need to be replaced
-  // with actual loading logic in a real implementation
-  throw new Error('Plugin manifest loading from local ID not implemented');
+  // If it's a local plugin ID, load it from the plugin directory
+  try {
+    const pluginDirectory = options.pluginDirectory || DEFAULT_PLUGIN_DIRECTORY;
+    const manifestPath = `${pluginDirectory}/${id}/manifest.json`;
+    
+    // In a browser environment, we'll use fetch
+    const response = await fetch(manifestPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch local plugin manifest: ${response.statusText}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    throw new Error(`Failed to load plugin manifest from local ID: ${String(error)}`);
+  }
 }
 
 /**
@@ -211,17 +415,26 @@ async function loadPluginCode(
 ): Promise<string> {
   // If source is provided directly
   if (options.source) {
-    return options.source;
+    // If source is already code (string), return it
+    if (typeof options.source === 'string') {
+      return options.source;
+    }
+    
+    // If source is an object with a code property, use it
+    if (typeof options.source === 'object' && 'code' in options.source && typeof options.source.code === 'string') {
+      return options.source.code;
+    }
+    
+    throw new Error('Plugin code not found in source');
   }
   
-  // If URL is provided
-  const url = options.url || '';
+  // If URL is provided or the ID is a URL
+  const url = options.url || (manifest.id.startsWith('http') ? manifest.id : '');
   if (url) {
     try {
       // Resolve the entry point URL
-      const entryPointUrl = url.endsWith('/')
-        ? `${url}${manifest.entryPoint}`
-        : `${url}/${manifest.entryPoint}`;
+      const baseUrl = url.endsWith('/') ? url.slice(0, -1) : url;
+      const entryPointUrl = `${baseUrl}/${manifest.entryPoint}`;
       
       // Fetch the plugin code
       const response = await fetch(entryPointUrl);
@@ -235,10 +448,21 @@ async function loadPluginCode(
     }
   }
   
-  // If it's a local plugin, load it from the file system or local storage
-  // For now, we'll implement a placeholder that would need to be replaced
-  // with actual loading logic in a real implementation
-  throw new Error('Plugin code loading from local ID not implemented');
+  // If it's a local plugin, load it from the plugin directory
+  try {
+    const pluginDirectory = options.pluginDirectory || DEFAULT_PLUGIN_DIRECTORY;
+    const codePath = `${pluginDirectory}/${manifest.id}/${manifest.entryPoint}`;
+    
+    // In a browser environment, we'll use fetch
+    const response = await fetch(codePath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch local plugin code: ${response.statusText}`);
+    }
+    
+    return await response.text();
+  } catch (error) {
+    throw new Error(`Failed to load plugin code from local ID: ${String(error)}`);
+  }
 }
 
 /**
@@ -282,4 +506,28 @@ function createPluginInstance(
   } catch (error) {
     throw new Error(`Failed to create plugin instance: ${String(error)}`);
   }
+}
+
+/**
+ * Format a detailed error message for plugin operations
+ * 
+ * @param pluginId Plugin ID
+ * @param error The original error
+ * @param stage Optional stage where the error occurred
+ * @returns Formatted error message
+ */
+function formatErrorMessage(
+  pluginId: string,
+  error: unknown,
+  stage?: string
+): string {
+  const errorMsg = error instanceof Error 
+    ? error.message 
+    : String(error);
+  
+  const stageMsg = stage 
+    ? ` during ${stage}` 
+    : '';
+  
+  return `Plugin error${stageMsg} [${pluginId}]: ${errorMsg}`;
 }

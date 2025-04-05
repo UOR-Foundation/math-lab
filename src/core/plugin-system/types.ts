@@ -246,8 +246,12 @@ export interface PluginRegistryEntry {
  */
 export interface PluginLoaderOptions {
   url?: string;
-  source?: string;
+  source?: string | PluginManifest | { code: string; manifest: PluginManifest };
   sandbox?: boolean;
+  pluginDirectory?: string;
+  noCache?: boolean;
+  cacheExpiration?: number;
+  loadDependencies?: boolean;
 }
 
 /**
