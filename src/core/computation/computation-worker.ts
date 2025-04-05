@@ -77,8 +77,9 @@ function executeAst(id: string, ast: unknown, context: Record<string, unknown> =
       return;
     }
     
-    // Evaluate the AST
-    const result = evaluator.evaluate(ast);
+    // Evaluate the AST - need to cast since we know the internal implementation
+    // Using unknown cast instead of any
+    const result = evaluator.evaluate(ast as unknown as import('../expression-engine/types').ASTNode);
     
     // Send mid-progress
     sendProgress(id, 0.5);

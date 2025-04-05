@@ -15,13 +15,13 @@ import { ASTNode } from '../expression-engine/types';
  */
 export interface ExecutionPlan {
   ast: ASTNode;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
 }
 
 /**
  * Computation result type
  */
-export interface ComputationResult<T = any> {
+export interface ComputationResult<T = unknown> {
   value: T;
   duration: number;
   memoryUsage?: number;
@@ -43,7 +43,8 @@ export interface ExecutionOptions {
 export class ComputationExecutor {
   private workerManager: WorkerManager;
   private queue: ComputationQueue;
-  private readonly workerPath: string;
+  // Worker path stored for potential future use
+  private readonly _workerPath: string; // eslint-disable-line @typescript-eslint/no-unused-vars
   
   /**
    * Create a new computation executor
@@ -51,7 +52,7 @@ export class ComputationExecutor {
    * @param workerCount - Optional number of workers to create
    */
   constructor(workerPath: string, workerCount?: number) {
-    this.workerPath = workerPath;
+    this._workerPath = workerPath;
     this.workerManager = new WorkerManager(workerPath, workerCount);
     this.queue = new ComputationQueue();
   }

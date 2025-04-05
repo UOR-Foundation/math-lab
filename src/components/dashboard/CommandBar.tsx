@@ -83,7 +83,7 @@ const CommandBar: React.FC = () => {
       .then(computationResult => {
         // Add result to the store
         dispatch(addResult({
-          result: computationResult.value,
+          value: computationResult.value,
           timestamp: new Date().toISOString(),
           duration: computationResult.duration
         }));

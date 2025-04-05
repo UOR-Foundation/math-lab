@@ -133,7 +133,9 @@ export class ExpressionEngine {
     const { tokens, errors } = this.parse(expression);
     
     // Apply syntax highlighting
-    return this.syntaxHighlighter.highlight(tokens, errors);
+    const result = this.syntaxHighlighter.highlight(tokens, errors);
+    // Ensure we return an array
+    return Array.isArray(result) ? result : [];
   }
 
   /**

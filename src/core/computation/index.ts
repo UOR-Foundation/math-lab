@@ -23,7 +23,8 @@ export interface ResourceLimits {
  */
 export class ComputationManager {
   private executor: ComputationExecutor;
-  private readonly workerPath: string;
+  // Worker path stored for potential future use
+  private readonly _workerPath: string; // eslint-disable-line @typescript-eslint/no-unused-vars
   private resourceLimits: ResourceLimits;
   
   private static instance: ComputationManager;
@@ -39,7 +40,7 @@ export class ComputationManager {
     workerCount?: number,
     resourceLimits: ResourceLimits = {}
   ) {
-    this.workerPath = workerPath;
+    this._workerPath = workerPath;
     this.executor = new ComputationExecutor(workerPath, workerCount);
     this.resourceLimits = {
       maxMemory: 1024 * 1024 * 100, // 100MB
@@ -84,7 +85,7 @@ export class ComputationManager {
    */
   public async execute<T>(
     ast: ASTNode,
-    context?: Record<string, any>,
+    context?: Record<string, unknown>,
     options: ExecutionOptions = {}
   ): Promise<ComputationResult<T>> {
     // Apply resource limits to options
@@ -110,7 +111,7 @@ export class ComputationManager {
    */
   public async executeAll<T>(
     asts: ASTNode[],
-    contexts?: Record<string, any>[],
+    contexts?: Record<string, unknown>[],
     options: ExecutionOptions = {}
   ): Promise<ComputationResult<T>[]> {
     const plans: ExecutionPlan[] = asts.map((ast, index) => ({

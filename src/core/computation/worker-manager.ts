@@ -17,7 +17,7 @@ export interface TaskResult<T> {
   error?: string;
 }
 
-export interface Task<T = unknown> {
+export interface Task<_T = unknown> {
   id: string;
   type: string;
   payload: unknown;
@@ -25,7 +25,8 @@ export interface Task<T = unknown> {
   priority?: number;
 }
 
-export interface TaskQueueItem<T = unknown> extends Task<T> {
+export interface TaskQueueItem<T = unknown> extends Omit<Task<unknown>, 'id'> {
+  id: string;
   resolve: (result: T) => void;
   reject: (error: Error) => void;
 }
@@ -88,8 +89,8 @@ export class WorkerManager {
         reject
       };
       
-      this.taskMap.set(task.id, queueItem);
-      this.taskQueue.push(queueItem);
+      this.taskMap.set(task.id, queueItem as TaskQueueItem<unknown>);
+      this.taskQueue.push(queueItem as TaskQueueItem<unknown>);
       
       // Sort task queue by priority (higher priority first)
       this.taskQueue.sort((a, b) => (b.priority || 0) - (a.priority || 0));
@@ -112,7 +113,7 @@ export class WorkerManager {
     
     // Reject all pending tasks
     for (const task of this.taskQueue) {
-      task.reject(new Error('Worker pool terminated'));
+      (task as TaskQueueItem<unknown>).reject(new Error('Worker pool terminated'));
     }
     
     // Clear task queue and map

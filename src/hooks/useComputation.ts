@@ -78,7 +78,7 @@ export function useComputation<T>(
   // Execute computation
   const execute = useCallback(async (
     ast: ASTNode,
-    execContext?: Record<string, any>
+    execContext?: Record<string, unknown>
   ): Promise<ComputationResult<T>> => {
     if (!computationManagerRef.current) {
       throw new Error('Computation manager not initialized');

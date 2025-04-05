@@ -53,7 +53,7 @@ const theme = createTheme({
 });
 
 const DashboardLayout: FC<DashboardLayoutProps> = ({
-  onCommandExecute,
+  onCommandExecute: _onCommandExecute,
   onNavigate,
   results = [],
   panels = [],
@@ -71,7 +71,7 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({
         }}
       >
         <Box sx={{ p: 2 }}>
-          <CommandBar onExecute={onCommandExecute} />
+          <CommandBar />
         </Box>
 
         <Box sx={{ flexGrow: 1, overflow: 'hidden', p: 2 }}>
