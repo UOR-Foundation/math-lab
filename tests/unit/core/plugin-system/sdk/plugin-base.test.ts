@@ -25,7 +25,7 @@ class TestPlugin extends PluginBase {
     );
   }
   
-  async initialize(context: PluginContext): Promise<{ success: boolean; error?: string }> {
+  async initialize(_context: PluginContext): Promise<{ success: boolean; error?: string }> {
     return { success: true, error: undefined };
   }
   

@@ -4,7 +4,7 @@
  * Tests for the plugin decorators
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { method, eventHandler, panel, visualization } from '../../../../../src/core/plugin-system/sdk/decorators';
 import { PluginBase } from '../../../../../src/core/plugin-system/sdk/plugin-base';
 
