@@ -25,7 +25,7 @@ vi.mock('../../../src/core/plugin-system/service', () => {
   };
   
   const mockEventApi = {
-    subscribe: vi.fn(),
+    subscribe: vi.fn().mockReturnValue(() => {}), // Return an unsubscribe function
     publish: vi.fn(),
   };
   

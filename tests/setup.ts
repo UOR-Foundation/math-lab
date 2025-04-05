@@ -3,14 +3,21 @@ import { vi } from 'vitest';
 // Mock IndexedDB for tests
 if (typeof indexedDB === 'undefined') {
   // Create a minimal mock of IndexedDB
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  interface IDBDatabase {}
+  interface IDBRequest {
+    onupgradeneeded: null | (() => void);
+    onsuccess: null | (() => void);
+    onerror: null | (() => void);
+    result?: IDBDatabase;
+  }
+
   global.indexedDB = {
     open: vi.fn().mockReturnValue({
       onupgradeneeded: null,
       onsuccess: null,
-      onerror: null,
-    }),
-  } as any;
+      onerror: null
+    } as IDBRequest)
+  };
 }
 
 // Mock navigator.hardwareConcurrency
