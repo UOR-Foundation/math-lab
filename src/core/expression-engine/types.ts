@@ -101,15 +101,18 @@ export interface ParseResult {
   errors: SyntaxError[];
 }
 
+// Expression result type
+export type ExpressionValue = number | string | boolean | null;
+
 // Expression evaluation context
 export interface EvaluationContext {
-  variables: Record<string, any>;
-  functions: Record<string, (...args: any[]) => any>;
+  variables: Record<string, ExpressionValue>;
+  functions: Record<string, (...args: ExpressionValue[]) => ExpressionValue>;
 }
 
 // Expression evaluation result
 export interface EvaluationResult {
-  value: any;
+  value: ExpressionValue;
   error?: string;
 }
 

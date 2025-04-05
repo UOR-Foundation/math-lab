@@ -7,7 +7,8 @@ import {
   FunctionCallNode,
   VariableNode,
   EvaluationContext,
-  EvaluationResult
+  EvaluationResult,
+  ExpressionValue
 } from './types';
 
 /**
@@ -49,8 +50,8 @@ export const defaultContext: EvaluationContext = {
     
     // Additional utility functions
     gcd: (a: number, b: number): number => {
-      a = Math.abs(a);
-      b = Math.abs(b);
+      a = Math.abs(a as number);
+      b = Math.abs(b as number);
       
       while (b > 0) {
         const temp = b;
@@ -62,8 +63,8 @@ export const defaultContext: EvaluationContext = {
     },
     
     lcm: (a: number, b: number): number => {
-      const gcd = defaultContext.functions.gcd(a, b);
-      return Math.abs(a * b) / gcd;
+      const gcdVal = defaultContext.functions.gcd(a, b) as number;
+      return Math.abs((a as number) * (b as number)) / gcdVal;
     },
     
     factorial: (n: number): number => {
@@ -133,7 +134,7 @@ export class Evaluator {
    * @param node - The node to evaluate
    * @returns The evaluated value
    */
-  private evaluateNode(node: ASTNode): any {
+  private evaluateNode(node: ASTNode): ExpressionValue {
     switch (node.type) {
       case NodeType.Number:
         return this.evaluateNumber(node as NumberNode);
@@ -169,33 +170,37 @@ export class Evaluator {
    * @param node - The binary operation node
    * @returns The result of the operation
    */
-  private evaluateBinaryOperation(node: BinaryOperationNode): any {
+  private evaluateBinaryOperation(node: BinaryOperationNode): ExpressionValue {
     const left = this.evaluateNode(node.left);
     const right = this.evaluateNode(node.right);
     
+    // Type narrowing for numeric operations
+    const numericLeft = left as number;
+    const numericRight = right as number;
+    
     switch (node.operator) {
-      case '+': return left + right;
-      case '-': return left - right;
-      case '*': return left * right;
+      case '+': return numericLeft + numericRight;
+      case '-': return numericLeft - numericRight;
+      case '*': return numericLeft * numericRight;
       case '/':
-        if (right === 0) {
+        if (numericRight === 0) {
           throw new Error('Division by zero');
         }
-        return left / right;
-      case '^': return Math.pow(left, right);
+        return numericLeft / numericRight;
+      case '^': return Math.pow(numericLeft, numericRight);
       case '%':
-        if (right === 0) {
+        if (numericRight === 0) {
           throw new Error('Modulo by zero');
         }
-        return left % right;
+        return numericLeft % numericRight;
       case '==': return left === right;
       case '!=': return left !== right;
-      case '<': return left < right;
-      case '>': return left > right;
-      case '<=': return left <= right;
-      case '>=': return left >= right;
-      case '&&': return left && right;
-      case '||': return left || right;
+      case '<': return numericLeft < numericRight;
+      case '>': return numericLeft > numericRight;
+      case '<=': return numericLeft <= numericRight;
+      case '>=': return numericLeft >= numericRight;
+      case '&&': return Boolean(left) && Boolean(right);
+      case '||': return Boolean(left) || Boolean(right);
       default:
         throw new Error(`Unknown binary operator: ${node.operator}`);
     }
@@ -206,12 +211,12 @@ export class Evaluator {
    * @param node - The unary operation node
    * @returns The result of the operation
    */
-  private evaluateUnaryOperation(node: UnaryOperationNode): any {
+  private evaluateUnaryOperation(node: UnaryOperationNode): ExpressionValue {
     const argument = this.evaluateNode(node.argument);
     
     switch (node.operator) {
-      case '+': return +argument;
-      case '-': return -argument;
+      case '+': return +(argument as number);
+      case '-': return -(argument as number);
       case '!': return !argument;
       default:
         throw new Error(`Unknown unary operator: ${node.operator}`);
@@ -223,7 +228,7 @@ export class Evaluator {
    * @param node - The function call node
    * @returns The result of the function call
    */
-  private evaluateFunctionCall(node: FunctionCallNode): any {
+  private evaluateFunctionCall(node: FunctionCallNode): ExpressionValue {
     const func = this.context.functions[node.name];
     
     if (!func) {
@@ -242,7 +247,7 @@ export class Evaluator {
    * @param node - The variable node
    * @returns The variable value
    */
-  private evaluateVariable(node: VariableNode): any {
+  private evaluateVariable(node: VariableNode): ExpressionValue {
     const value = this.context.variables[node.name];
     
     if (value === undefined) {

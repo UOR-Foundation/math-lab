@@ -8,7 +8,8 @@ import {
   ExpressionSuggestion,
   ParseResult,
   EvaluationResult,
-  TokenWithStyle
+  TokenWithStyle,
+  ExpressionValue
 } from './types';
 
 /**
@@ -18,6 +19,15 @@ export interface ExpressionEngineOptions {
   context?: Partial<EvaluationContext>;
   syntaxStyles?: Partial<SyntaxStyles>;
   additionalSuggestions?: ExpressionSuggestion[];
+}
+
+/**
+ * History entry type
+ */
+export interface HistoryEntry {
+  expression: string;
+  result: ExpressionValue;
+  timestamp: number;
 }
 
 /**
@@ -33,11 +43,7 @@ export class ExpressionEngine {
   private parseCache: Map<string, ParseResult> = new Map();
   
   // History of expressions and results
-  private history: Array<{
-    expression: string;
-    result: any;
-    timestamp: number;
-  }> = [];
+  private history: HistoryEntry[] = [];
 
   /**
    * Create a new expression engine
@@ -152,7 +158,7 @@ export class ExpressionEngine {
    * @param expression - The evaluated expression
    * @param result - The evaluation result
    */
-  private addToHistory(expression: string, result: any): void {
+  private addToHistory(expression: string, result: ExpressionValue): void {
     this.history.unshift({
       expression,
       result,
@@ -169,11 +175,7 @@ export class ExpressionEngine {
    * Get expression evaluation history
    * @returns Array of expression history entries
    */
-  public getHistory(): Array<{
-    expression: string;
-    result: any;
-    timestamp: number;
-  }> {
+  public getHistory(): HistoryEntry[] {
     return [...this.history];
   }
 

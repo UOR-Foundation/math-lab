@@ -234,7 +234,8 @@ export class Parser {
       }
       
       // Parse arguments separated by commas
-      while (true) {
+      let continueParsingArgs = true;
+      while (continueParsingArgs) {
         args.push(this.parseExpression());
         
         // Check for comma or right parenthesis
@@ -245,15 +246,13 @@ export class Parser {
         
         if (this.currentToken().type === TokenType.RightParen) {
           this.advance(); // Consume right parenthesis
-          break;
-        }
-        
-        // Expect comma between arguments
-        if (this.currentToken().value !== ',') {
+          continueParsingArgs = false;
+        } else if (this.currentToken().value === ',') {
+          this.advance(); // Consume comma
+        } else {
           this.addError(`Expected ',' between function arguments`, this.currentToken().start);
           // Try to recover by assuming a comma
-        } else {
-          this.advance(); // Consume comma
+          continueParsingArgs = false;
         }
       }
       
