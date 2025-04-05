@@ -23,8 +23,7 @@ export interface ResourceLimits {
  */
 export class ComputationManager {
   private executor: ComputationExecutor;
-  // Worker path stored for potential future use
-  private readonly _workerPath: string; // eslint-disable-line @typescript-eslint/no-unused-vars
+  // Worker implementation details managed by executor
   private resourceLimits: ResourceLimits;
   
   private static instance: ComputationManager;
@@ -40,7 +39,7 @@ export class ComputationManager {
     workerCount?: number,
     resourceLimits: ResourceLimits = {}
   ) {
-    this._workerPath = workerPath;
+    // Store worker path in executor only
     this.executor = new ComputationExecutor(workerPath, workerCount);
     this.resourceLimits = {
       maxMemory: 1024 * 1024 * 100, // 100MB
