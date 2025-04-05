@@ -4,21 +4,84 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - staging
+          - production
 
 jobs:
   deploy:
+    name: Deploy to ${{ github.event.inputs.environment || 'production' }}
     runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+    
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
+          cache: 'npm'
+      
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
-      - name: Build
+      
+      - name: Run linting
+        run: npm run lint
+      
+      - name: Run type checking
+        run: npm run typecheck
+      
+      - name: Run tests
+        run: npm test
+      
+      - name: Build application
         run: npm run build
+        env:
+          NODE_ENV: production
+          VITE_APP_ENV: ${{ github.event.inputs.environment || 'production' }}
+          VITE_APP_VERSION: ${{ github.sha }}
+          VITE_API_BASE_URL: ${{ secrets.API_BASE_URL }}
+      
+      - name: Configure base path
+        if: github.event.inputs.environment == 'staging'
+        run: |
+          echo "::set-output name=base_path::/math-lab/staging"
+          # Update base path in index.html
+          sed -i 's|<base href="/">|<base href="/math-lab/staging/">|g' dist/index.html
+        id: config
+      
+      - name: Configure production base path
+        if: github.event.inputs.environment != 'staging'
+        run: |
+          echo "::set-output name=base_path::/math-lab"
+          # Update base path in index.html
+          sed -i 's|<base href="/">|<base href="/math-lab/">|g' dist/index.html
+        id: config-prod
+      
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./dist
+          destination_dir: ${{ github.event.inputs.environment == 'staging' && 'staging' || '' }}
+          cname: ${{ secrets.CNAME }}
+          user_name: 'github-actions[bot]'
+          user_email: 'github-actions[bot]@users.noreply.github.com'
+          commit_message: 'Deploy to ${{ github.event.inputs.environment || "production" }}: ${{ github.event.head_commit.message }}'
+
+      - name: Create deployment status
+        uses: chrnorm/deployment-status@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          environment: ${{ github.event.inputs.environment || 'production' }}
+          state: success
+          deployment-url: https://${{ secrets.CNAME || 'uor-foundation.github.io' }}${{ steps.config.outputs.base_path || steps.config-prod.outputs.base_path }}
