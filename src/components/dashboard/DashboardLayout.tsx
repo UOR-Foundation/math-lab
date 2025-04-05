@@ -1,9 +1,10 @@
 import { FC } from 'react';
-import { Grid, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { Grid, Box, CssBaseline, ThemeProvider } from '@mui/material';
 import CommandBar from './CommandBar';
 import MainWorkspace from './MainWorkspace';
 import Sidebar from './Sidebar';
 import ResultsArea from './ResultsArea';
+import { useTheme } from '../../hooks/useTheme';
 
 interface DashboardLayoutProps {
   onCommandExecute?: (command: string, result: string) => void;
@@ -23,34 +24,6 @@ interface DashboardLayoutProps {
   }>;
 }
 
-// Create a responsive theme
-const theme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: {
-      main: '#4a90e2', // Match the theme color from dashboard-spec
-    },
-    secondary: {
-      main: '#f50057',
-    },
-    background: {
-      default: '#f5f5f7',
-      paper: '#ffffff',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-  components: {
-    MuiPaper: {
-      styleOverrides: {
-        root: {
-          boxShadow: '0px 2px 10px rgba(0, 0, 0, 0.05)',
-        },
-      },
-    },
-  },
-});
 
 const DashboardLayout: FC<DashboardLayoutProps> = ({
   onCommandExecute: _onCommandExecute,
@@ -58,6 +31,8 @@ const DashboardLayout: FC<DashboardLayoutProps> = ({
   results = [],
   panels = [],
 }) => {
+  const { theme } = useTheme();
+  
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
