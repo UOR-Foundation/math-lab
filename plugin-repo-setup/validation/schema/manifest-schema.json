@@ -1,0 +1,328 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Math Lab Plugin Manifest Schema",
+  "description": "Schema for validating Math Lab plugin manifest files",
+  "type": "object",
+  "required": [
+    "id",
+    "name",
+    "version",
+    "compatibility",
+    "author",
+    "license",
+    "description",
+    "entryPoint"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique identifier for the plugin",
+      "pattern": "^[a-z0-9-_.]+$"
+    },
+    "name": {
+      "type": "string",
+      "description": "Display name of the plugin"
+    },
+    "version": {
+      "type": "string",
+      "description": "Semantic version of the plugin",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "compatibility": {
+      "type": "object",
+      "description": "Compatibility requirements",
+      "required": ["mathJs", "dashboard"],
+      "properties": {
+        "mathJs": {
+          "type": "string",
+          "description": "Compatible math-js version (semver)"
+        },
+        "dashboard": {
+          "type": "string",
+          "description": "Compatible dashboard version (semver)"
+        }
+      }
+    },
+    "author": {
+      "type": "object",
+      "description": "Author information",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Author name"
+        },
+        "email": {
+          "type": "string",
+          "description": "Author email",
+          "format": "email"
+        },
+        "url": {
+          "type": "string",
+          "description": "Author website",
+          "format": "uri"
+        }
+      }
+    },
+    "license": {
+      "type": "string",
+      "description": "License identifier"
+    },
+    "description": {
+      "type": "string",
+      "description": "Brief description of plugin functionality"
+    },
+    "keywords": {
+      "type": "array",
+      "description": "Keywords for plugin categorization",
+      "items": {
+        "type": "string"
+      }
+    },
+    "repository": {
+      "type": "string",
+      "description": "Repository URL",
+      "format": "uri"
+    },
+    "entryPoint": {
+      "type": "string",
+      "description": "Path to plugin entry point"
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Plugin dependencies",
+      "items": {
+        "type": "object",
+        "required": ["id", "version"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dependency plugin ID"
+          },
+          "version": {
+            "type": "string",
+            "description": "Compatible version (semver)"
+          },
+          "optional": {
+            "type": "boolean",
+            "description": "Whether the dependency is optional",
+            "default": false
+          }
+        }
+      }
+    },
+    "dashboard": {
+      "type": "object",
+      "description": "Dashboard integration configuration",
+      "properties": {
+        "panels": {
+          "type": "array",
+          "description": "UI panels provided by the plugin",
+          "items": {
+            "type": "object",
+            "required": ["id", "title"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Panel ID"
+              },
+              "title": {
+                "type": "string",
+                "description": "Panel title"
+              },
+              "icon": {
+                "type": "string",
+                "description": "Path to panel icon"
+              },
+              "position": {
+                "type": "string",
+                "description": "Panel position",
+                "enum": ["main", "sidebar", "footer", "header"]
+              },
+              "initialState": {
+                "type": "object",
+                "description": "Initial panel state",
+                "properties": {
+                  "expanded": {
+                    "type": "boolean",
+                    "description": "Whether the panel is expanded"
+                  },
+                  "width": {
+                    "type": "string",
+                    "description": "Panel width"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "toolbarItems": {
+          "type": "array",
+          "description": "Toolbar items provided by the plugin",
+          "items": {
+            "type": "object",
+            "required": ["id", "title"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Toolbar item ID"
+              },
+              "title": {
+                "type": "string",
+                "description": "Toolbar item title"
+              },
+              "icon": {
+                "type": "string",
+                "description": "Path to toolbar item icon"
+              }
+            }
+          }
+        },
+        "visualizations": {
+          "type": "array",
+          "description": "Visualizations provided by the plugin",
+          "items": {
+            "type": "object",
+            "required": ["id", "name"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Visualization ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "Visualization name"
+              },
+              "description": {
+                "type": "string",
+                "description": "Visualization description"
+              },
+              "type": {
+                "type": "string",
+                "description": "Visualization type",
+                "enum": ["2d", "3d", "chart", "custom"]
+              }
+            }
+          }
+        },
+        "menu": {
+          "type": "array",
+          "description": "Menu items provided by the plugin",
+          "items": {
+            "type": "object",
+            "required": ["id", "label"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Menu item ID"
+              },
+              "label": {
+                "type": "string",
+                "description": "Menu item label"
+              },
+              "icon": {
+                "type": "string",
+                "description": "Path to menu item icon"
+              },
+              "parent": {
+                "type": "string",
+                "description": "Parent menu item ID"
+              }
+            }
+          }
+        }
+      }
+    },
+    "config": {
+      "type": "object",
+      "description": "Plugin configuration",
+      "properties": {
+        "schema": {
+          "type": "object",
+          "description": "Configuration schema",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type", "default", "description"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Parameter type",
+                "enum": ["string", "number", "boolean", "array", "object"]
+              },
+              "default": {
+                "description": "Default value"
+              },
+              "description": {
+                "type": "string",
+                "description": "Parameter description"
+              },
+              "min": {
+                "type": "number",
+                "description": "Minimum value (for number type)"
+              },
+              "max": {
+                "type": "number",
+                "description": "Maximum value (for number type)"
+              },
+              "enum": {
+                "type": "array",
+                "description": "Allowed values (for string type)"
+              },
+              "format": {
+                "type": "string",
+                "description": "Value format (for string type)",
+                "enum": ["uri", "email", "date", "time", "color"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "Required permissions",
+      "items": {
+        "type": "string",
+        "enum": [
+          "storage",
+          "computation.intensive",
+          "network",
+          "clipboard",
+          "fileSystem.read",
+          "fileSystem.write"
+        ]
+      }
+    },
+    "resources": {
+      "type": "object",
+      "description": "Resource requirements",
+      "properties": {
+        "cpu": {
+          "type": "string",
+          "description": "CPU usage level",
+          "enum": ["low", "medium", "high"]
+        },
+        "memory": {
+          "type": "string",
+          "description": "Memory usage level",
+          "enum": ["low", "medium", "high"]
+        }
+      }
+    },
+    "documentation": {
+      "type": "object",
+      "description": "Documentation paths",
+      "properties": {
+        "main": {
+          "type": "string",
+          "description": "Path to main documentation"
+        },
+        "api": {
+          "type": "string",
+          "description": "Path to API documentation"
+        }
+      }
+    }
+  },
+  "additionalProperties": false
+}

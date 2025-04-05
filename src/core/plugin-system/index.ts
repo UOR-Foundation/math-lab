@@ -50,5 +50,9 @@ export {
   resolveActiveConfirm
 } from './implementations';
 
+// Export repository connector
+export { createPluginRepositoryConnector, PluginRepositoryConnector } from './repo-connector';
+export type { RepositoryPluginMetadata, RepositoryIndex } from './repo-connector';
+
 // Export SDK for plugin development
 export * as sdk from './sdk';
