@@ -12,21 +12,34 @@ import {
   Paper, 
   Typography, 
   LinearProgress,
-  InputAdornment
+  InputAdornment,
+  Popper,
+  ClickAwayListener,
+  Fade
 } from '@mui/material';
-// Mock icons for now due to missing dependency
-const PlayArrowIcon = () => <span>▶</span>;
-const StopIcon = () => <span>■</span>;
-const HistoryIcon = () => <span>⋯</span>;
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import StopIcon from '@mui/icons-material/Stop';
+import HistoryIcon from '@mui/icons-material/History';
+import SearchIcon from '@mui/icons-material/Search';
+
+interface CommandBarProps {
+  compact?: boolean;
+  onExecute?: (expression: string, result: string) => void;
+}
 
 /**
  * CommandBar component for entering and evaluating mathematical expressions
  */
-const CommandBar: React.FC = () => {
+const CommandBar: React.FC<CommandBarProps> = ({ 
+  compact = false,
+  onExecute
+}) => {
   const dispatch = useAppDispatch();
   const [expression, setExpression] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   // Get expression engine hooks for syntax highlighting, parsing, etc.
   const { 
@@ -56,6 +69,11 @@ const CommandBar: React.FC = () => {
   // Handle expression change
   const handleExpressionChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setExpression(event.target.value);
+    if (event.target.value.trim()) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
   };
   
   // Handle keyboard shortcuts
@@ -67,42 +85,166 @@ const CommandBar: React.FC = () => {
     }
     
     // Cancel on Escape
-    if (event.key === 'Escape' && isRunning) {
-      event.preventDefault();
-      cancel();
+    if (event.key === 'Escape') {
+      if (isRunning) {
+        event.preventDefault();
+        cancel();
+      } else if (showSuggestions) {
+        event.preventDefault();
+        setShowSuggestions(false);
+      }
     }
   };
   
   // Handle execute button click
   const handleExecute = useCallback(() => {
-    if (!parsedExpression?.ast || errors.length > 0) {
+    if (!parsedExpression?.ast || errors.length > 0 || !expression.trim()) {
       return;
     }
     
     execute(parsedExpression.ast)
       .then(computationResult => {
         // Add result to the store
+        const resultValue = String(computationResult.value);
         dispatch(addResult({
-          value: computationResult.value,
+          value: resultValue,
           timestamp: new Date().toISOString(),
-          duration: computationResult.duration
+          duration: computationResult.duration,
+          metadata: { expression }
         }));
+        
+        // Notify parent component if callback provided
+        if (onExecute) {
+          onExecute(expression, resultValue);
+        }
+        
+        // Clear expression if compact mode
+        if (compact) {
+          setExpression('');
+        }
       })
       .catch(err => {
         console.error('Computation error:', err);
       });
-  }, [parsedExpression, errors, execute, dispatch]);
+  }, [parsedExpression, errors, execute, dispatch, expression, onExecute, compact]);
   
   // Handle cancel button click
   const handleCancel = () => {
     cancel('User cancelled');
   };
   
+  // Handle suggestion click
+  const handleSuggestionClick = (suggestion: ExpressionSuggestion) => {
+    setExpression(prev => prev + suggestion.text);
+    inputRef.current?.focus();
+    setShowSuggestions(false);
+  };
+  
   // Focus input on component mount
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (!compact) {
+      inputRef.current?.focus();
+    }
+  }, [compact]);
   
+  // Compact layout for toolbar
+  if (compact) {
+    return (
+      <Box ref={containerRef} sx={{ position: 'relative', width: '100%' }}>
+        <TextField
+          size="small"
+          placeholder="Calculate..."
+          value={expression}
+          onChange={handleExpressionChange}
+          onKeyDown={handleKeyDown}
+          onFocus={() => {
+            setIsFocused(true);
+            if (expression.trim()) {
+              setShowSuggestions(true);
+            }
+          }}
+          onBlur={() => setIsFocused(false)}
+          inputRef={inputRef}
+          sx={{
+            width: '100%',
+            '& .MuiInputBase-root': {
+              borderRadius: 4,
+            },
+          }}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+            endAdornment: (
+              <InputAdornment position="end">
+                {isRunning ? (
+                  <IconButton onClick={handleCancel} color="error" size="small">
+                    <StopIcon fontSize="small" />
+                  </IconButton>
+                ) : (
+                  <IconButton 
+                    onClick={handleExecute} 
+                    color="primary" 
+                    size="small"
+                    disabled={!parsedExpression?.ast || errors.length > 0 || !expression.trim()}
+                  >
+                    <PlayArrowIcon fontSize="small" />
+                  </IconButton>
+                )}
+              </InputAdornment>
+            ),
+          }}
+        />
+        
+        {/* Suggestions popper for compact mode */}
+        <Popper
+          open={isFocused && showSuggestions && suggestions.length > 0}
+          anchorEl={containerRef.current}
+          placement="bottom-start"
+          transition
+          style={{ zIndex: 1300, width: containerRef.current?.clientWidth }}
+        >
+          {({ TransitionProps }) => (
+            <Fade {...TransitionProps} timeout={350}>
+              <Paper 
+                elevation={3}
+                sx={{ 
+                  mt: 0.5,
+                  maxHeight: '300px', 
+                  overflow: 'auto',
+                  width: '100%'
+                }}
+              >
+                <ClickAwayListener onClickAway={() => setShowSuggestions(false)}>
+                  <Box>
+                    {suggestions.map((suggestion: ExpressionSuggestion, index: number) => (
+                      <Typography 
+                        key={index} 
+                        variant="body2"
+                        sx={{ 
+                          p: 1, 
+                          cursor: 'pointer',
+                          '&:hover': { bgcolor: 'action.hover' } 
+                        }}
+                        onClick={() => handleSuggestionClick(suggestion)}
+                      >
+                        <strong>{suggestion.displayText}</strong>
+                        {suggestion.description && ` - ${suggestion.description}`}
+                      </Typography>
+                    ))}
+                  </Box>
+                </ClickAwayListener>
+              </Paper>
+            </Fade>
+          )}
+        </Popper>
+      </Box>
+    );
+  }
+  
+  // Full layout for main command bar
   return (
     <Box sx={{ width: '100%', mb: 2 }}>
       <Paper 
@@ -117,7 +259,7 @@ const CommandBar: React.FC = () => {
           Command Bar
         </Typography>
         
-        <Box sx={{ position: 'relative' }}>
+        <Box sx={{ position: 'relative' }} ref={containerRef}>
           <TextField
             fullWidth
             variant="outlined"
@@ -125,7 +267,12 @@ const CommandBar: React.FC = () => {
             value={expression}
             onChange={handleExpressionChange}
             onKeyDown={handleKeyDown}
-            onFocus={() => setIsFocused(true)}
+            onFocus={() => {
+              setIsFocused(true);
+              if (expression.trim()) {
+                setShowSuggestions(true);
+              }
+            }}
             onBlur={() => setIsFocused(false)}
             inputRef={inputRef}
             InputProps={{
@@ -140,7 +287,7 @@ const CommandBar: React.FC = () => {
                       onClick={handleExecute} 
                       color="primary" 
                       size="large"
-                      disabled={!parsedExpression?.ast || errors.length > 0}
+                      disabled={!parsedExpression?.ast || errors.length > 0 || !expression.trim()}
                     >
                       <PlayArrowIcon />
                     </IconButton>
@@ -192,26 +339,27 @@ const CommandBar: React.FC = () => {
         )}
         
         {/* Suggestions */}
-        {isFocused && suggestions.length > 0 && (
-          <Paper sx={{ mt: 1, p: 1, maxHeight: '200px', overflow: 'auto' }}>
-            {suggestions.map((suggestion: ExpressionSuggestion, index: number) => (
-              <Typography 
-                key={index} 
-                variant="body2"
-                sx={{ 
-                  p: 0.5, 
-                  cursor: 'pointer',
-                  '&:hover': { bgcolor: 'action.hover' } 
-                }}
-                onClick={() => {
-                  setExpression(prev => prev + suggestion.text);
-                  inputRef.current?.focus();
-                }}
-              >
-                <strong>{suggestion.displayText}</strong>
-                {suggestion.description && ` - ${suggestion.description}`}
-              </Typography>
-            ))}
+        {isFocused && showSuggestions && suggestions.length > 0 && (
+          <Paper elevation={2} sx={{ mt: 1, p: 1, maxHeight: '200px', overflow: 'auto' }}>
+            <ClickAwayListener onClickAway={() => setShowSuggestions(false)}>
+              <Box>
+                {suggestions.map((suggestion: ExpressionSuggestion, index: number) => (
+                  <Typography 
+                    key={index} 
+                    variant="body2"
+                    sx={{ 
+                      p: 0.5, 
+                      cursor: 'pointer',
+                      '&:hover': { bgcolor: 'action.hover' } 
+                    }}
+                    onClick={() => handleSuggestionClick(suggestion)}
+                  >
+                    <strong>{suggestion.displayText}</strong>
+                    {suggestion.description && ` - ${suggestion.description}`}
+                  </Typography>
+                ))}
+              </Box>
+            </ClickAwayListener>
           </Paper>
         )}
         
