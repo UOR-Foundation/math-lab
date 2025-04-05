@@ -1,0 +1,46 @@
+{
+  "name": "@org/math-lab-plugin-basic",
+  "version": "1.0.0",
+  "description": "A basic plugin template for Math Lab",
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist",
+    "assets",
+    "manifest.json",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc && webpack",
+    "test": "jest",
+    "lint": "eslint . --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "package": "npm run build && npm pack"
+  },
+  "keywords": [
+    "math-lab",
+    "plugin",
+    "template",
+    "basic"
+  ],
+  "peerDependencies": {
+    "@uor-foundation/math-js": "^1.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "@typescript-eslint/eslint-plugin": "^6.0.0",
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.5.0",
+    "ts-jest": "^29.1.0",
+    "typescript": "^5.0.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^5.0.0"
+  }
+}

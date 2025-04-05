@@ -18,6 +18,7 @@ import { pluginRegistry } from './registry';
 import { loadPlugin, initializePlugin, unloadPlugin } from './loader';
 import { createPluginAPI } from './api';
 import { validateManifest } from './validator';
+import { createPluginRepositoryConnector, PluginRepositoryConnector } from './repo-connector';
 
 /**
  * Plugin Manager class for managing the lifecycle of plugins
@@ -30,6 +31,7 @@ export class PluginManager {
   private events: PluginEventAPI;
   private ui: PluginUIAPI;
   private pluginApis: Map<string, PluginAPI> = new Map();
+  private repositoryConnector: PluginRepositoryConnector | null = null;
   
   /**
    * Create a new PluginManager
@@ -57,8 +59,14 @@ export class PluginManager {
     this.options = {
       autoEnable: options.autoEnable !== false,
       pluginDirectory: options.pluginDirectory || './plugins',
-      allowRemotePlugins: options.allowRemotePlugins === true
+      allowRemotePlugins: options.allowRemotePlugins === true,
+      pluginRepository: options.pluginRepository || 'https://plugins.math-lab.uor-foundation.org'
     };
+    
+    // Initialize repository connector if repository is configured
+    if (this.options.pluginRepository) {
+      this.repositoryConnector = createPluginRepositoryConnector(this.options.pluginRepository);
+    }
   }
   
   /**
@@ -332,6 +340,95 @@ export class PluginManager {
       this.events,
       this.ui
     );
+  }
+  
+  /**
+   * Search for plugins in the repository
+   * 
+   * @param query Search query
+   * @param filters Optional filters
+   * @returns Promise resolving to plugin search results
+   */
+  public async searchPluginRepository(
+    query: string,
+    filters?: {
+      type?: 'official' | 'community';
+      keywords?: string[];
+    }
+  ): Promise<Array<{
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: { name: string; email?: string; url?: string };
+    keywords: string[];
+    compatibility: { mathJs: string; dashboard: string };
+    type: 'official' | 'community';
+  }>> {
+    if (!this.repositoryConnector) {
+      throw new Error('Plugin repository not configured');
+    }
+    
+    return this.repositoryConnector.searchPlugins(query, filters);
+  }
+  
+  /**
+   * Get plugin details from the repository
+   * 
+   * @param pluginId The plugin ID
+   * @returns Promise resolving to plugin details
+   */
+  public async getPluginRepositoryDetails(pluginId: string): Promise<{
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: { name: string; email?: string; url?: string };
+    keywords: string[];
+    compatibility: { mathJs: string; dashboard: string };
+    type: 'official' | 'community';
+  }> {
+    if (!this.repositoryConnector) {
+      throw new Error('Plugin repository not configured');
+    }
+    
+    return this.repositoryConnector.getPluginDetails(pluginId);
+  }
+  
+  /**
+   * Install a plugin from the repository
+   * 
+   * @param pluginId The plugin ID
+   * @returns Promise resolving when the plugin is installed
+   */
+  public async installPluginFromRepository(pluginId: string): Promise<string> {
+    if (!this.repositoryConnector) {
+      throw new Error('Plugin repository not configured');
+    }
+    
+    // Get plugin details
+    const plugin = await this.repositoryConnector.getPluginDetails(pluginId);
+    
+    // Fetch the plugin manifest
+    const manifest = await this.repositoryConnector.fetchPluginManifest(pluginId);
+    
+    // Register the plugin
+    const registeredId = await this.registerPlugin(manifest);
+    
+    // Download and install the plugin
+    await this.repositoryConnector.downloadPlugin(pluginId);
+    
+    // TODO: Extract the plugin package and load it
+    // This would be implemented based on how plugin packages are handled
+    
+    // Publish plugin installed event
+    this.events.publish('dashboard:plugin-installed', { 
+      pluginId: registeredId,
+      pluginName: plugin.name,
+      version: plugin.version
+    });
+    
+    return registeredId;
   }
 }
 

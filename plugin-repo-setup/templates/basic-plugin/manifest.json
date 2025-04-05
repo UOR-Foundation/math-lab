@@ -1,0 +1,59 @@
+{
+  "id": "org.example.basic-plugin",
+  "name": "Basic Plugin Template",
+  "version": "1.0.0",
+  "compatibility": {
+    "mathJs": "^1.0.0",
+    "dashboard": "^1.0.0"
+  },
+  "author": {
+    "name": "Your Name",
+    "email": "your.email@example.com",
+    "url": "https://example.com"
+  },
+  "license": "MIT",
+  "description": "A basic plugin template for Math Lab",
+  "keywords": ["math", "template", "basic"],
+  "repository": "https://github.com/your-username/math-lab-basic-plugin",
+  "entryPoint": "./index.js",
+  "dependencies": [],
+  "dashboard": {
+    "panels": [
+      {
+        "id": "main-panel",
+        "title": "Basic Plugin",
+        "icon": "./assets/images/icon.svg",
+        "position": "main",
+        "initialState": {
+          "expanded": true,
+          "width": "50%"
+        }
+      }
+    ],
+    "toolbarItems": [],
+    "visualizations": [],
+    "menu": []
+  },
+  "config": {
+    "schema": {
+      "exampleParameter": {
+        "type": "number",
+        "default": 100,
+        "description": "Example configuration parameter",
+        "min": 1,
+        "max": 1000
+      }
+    }
+  },
+  "permissions": [
+    "storage"
+  ],
+  "resources": {
+    "cpu": "low",
+    "memory": "low"
+  },
+  "documentation": {
+    "main": "./docs/README.md",
+    "api": "./docs/API.md"
+  }
+}

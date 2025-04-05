@@ -261,4 +261,5 @@ export interface PluginManagerOptions {
   autoEnable?: boolean;
   pluginDirectory?: string;
   allowRemotePlugins?: boolean;
+  pluginRepository?: string;
 }
