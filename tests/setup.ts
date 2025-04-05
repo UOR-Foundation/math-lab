@@ -3,6 +3,7 @@ import { vi } from 'vitest';
 // Mock IndexedDB for tests
 if (typeof indexedDB === 'undefined') {
   // Create a minimal mock of IndexedDB
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   global.indexedDB = {
     open: vi.fn().mockReturnValue({
       onupgradeneeded: null,
