@@ -1,40 +1,229 @@
 name: Release
 
 on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Type of version bump'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+      release_notes:
+        description: 'Release notes (optional)'
+        required: false
+        type: string
   push:
     tags:
       - 'v*.*.*'
 
+# Allow only one concurrent release workflow
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
-  build:
+  # Job to create a release when manually triggered
+  prepare-release:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.version.outputs.new_version }}
+      new_tag: ${{ steps.version.outputs.new_tag }}
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: '20'
+          cache: 'npm'
+
+      - name: Configure Git
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+      - name: Bump version
+        id: version
+        run: |
+          # Get current version from package.json
+          CURRENT_VERSION=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT_VERSION"
+          
+          # Determine new version based on input
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          
+          # Split version into parts
+          IFS='.' read -r MAJOR MINOR PATCH <<< "$CURRENT_VERSION"
+          
+          # Bump version according to type
+          if [ "$VERSION_TYPE" == "major" ]; then
+            NEW_VERSION="$((MAJOR + 1)).0.0"
+          elif [ "$VERSION_TYPE" == "minor" ]; then
+            NEW_VERSION="$MAJOR.$((MINOR + 1)).0"
+          else
+            NEW_VERSION="$MAJOR.$MINOR.$((PATCH + 1))"
+          fi
+          
+          echo "New version: $NEW_VERSION"
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "new_tag=v$NEW_VERSION" >> $GITHUB_OUTPUT
+          
+          # Update package.json and package-lock.json
+          npm version $NEW_VERSION --no-git-tag-version
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.1.0
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create changelog file
+        run: |
+          mkdir -p .changelog
+          RELEASE_NOTES="${{ github.event.inputs.release_notes }}"
+          
+          # Combine custom notes with auto-generated changelog
+          {
+            echo "# Release v${{ steps.version.outputs.new_version }}"
+            echo ""
+            
+            if [ -n "$RELEASE_NOTES" ]; then
+              echo "## Release Notes"
+              echo "$RELEASE_NOTES"
+              echo ""
+            fi
+            
+            echo "## Changes"
+            echo "${{ steps.changelog.outputs.changelog }}"
+          } > .changelog/release-notes.md
+          
+          cat .changelog/release-notes.md
+
+      - name: Commit changes
+        run: |
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ steps.version.outputs.new_version }}"
+          git push origin HEAD:main
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.version.outputs.new_tag }}
+          git push origin ${{ steps.version.outputs.new_tag }}
+
+  # Job to build and create a GitHub release
+  build-and-release:
+    runs-on: ubuntu-latest
+    needs: prepare-release
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ needs.prepare-release.outputs.new_tag }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      # Skip tests for now until browser API mocks are properly configured
+      # - name: Run tests
+      #   run: npm test
+
       - name: Build
         run: npm run build
-      - name: Create release
-        id: create_release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_ENV: production
+
+      - name: Create release ZIP
+        run: |
+          zip -r math-lab-${{ needs.prepare-release.outputs.new_version }}.zip dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
         with:
-          tag_name: ${{ github.ref }}
-          release_name: Release ${{ github.ref }}
+          tag_name: ${{ needs.prepare-release.outputs.new_tag }}
+          name: Release ${{ needs.prepare-release.outputs.new_tag }}
+          body_path: .changelog/release-notes.md
           draft: false
           prerelease: false
-      - name: Zip distribution
-        run: zip -r math-lab-${{ github.ref_name }}.zip dist
-      - name: Upload release asset
-        uses: actions/upload-release-asset@v1
+          files: math-lab-${{ needs.prepare-release.outputs.new_version }}.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Job to handle releases from pushed tags (for compatibility with existing workflows)
+  release-from-tag:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./math-lab-${{ github.ref_name }}.zip
-          asset_name: math-lab-${{ github.ref_name }}.zip
-          asset_content_type: application/zip
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci --legacy-peer-deps
+
+      - name: Run linting
+        run: npm run lint
+
+      - name: Run type checking
+        run: npm run typecheck
+
+      # Skip tests for now until browser API mocks are properly configured
+      # - name: Run tests
+      #   run: npm test
+
+      - name: Build
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Extract version from tag
+        id: extract_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.1.0
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create release ZIP
+        run: |
+          zip -r math-lab-${{ steps.extract_version.outputs.version }}.zip dist
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
+          body: ${{ steps.changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
+          files: math-lab-${{ steps.extract_version.outputs.version }}.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
