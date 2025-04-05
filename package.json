@@ -31,9 +31,9 @@
     "react-grid-layout": "^1.5.1",
     "react-redux": "^9.0.0",
     "react-router-dom": "^7.5.0",
-    "three": "^0.159.0",
-    "uuid": "^11.1.0",
-    "uor-foundation-math-js": "github:UOR-Foundation/math-js"
+    "three": "^0.175.0",
+    "uor-foundation-math-js": "github:UOR-Foundation/math-js",
+    "uuid": "^11.1.0"
   },
   "devDependencies": {
     "@testing-library/react": "^14.1.2",
