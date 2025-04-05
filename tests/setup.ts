@@ -1,9 +1,15 @@
 import { vi } from 'vitest';
-import { mockIDB } from 'safari-14-idb-fix';
 
 // Mock IndexedDB for tests
 if (typeof indexedDB === 'undefined') {
-  mockIDB();
+  // Create a minimal mock of IndexedDB
+  global.indexedDB = {
+    open: vi.fn().mockReturnValue({
+      onupgradeneeded: null,
+      onsuccess: null,
+      onerror: null,
+    }),
+  } as any;
 }
 
 // Mock navigator.hardwareConcurrency
