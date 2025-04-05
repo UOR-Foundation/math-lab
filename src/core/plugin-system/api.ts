@@ -28,7 +28,7 @@ import {
 export function createPluginAPI(
   manifest: PluginManifest,
   dashboard: DashboardAPI,
-  mathJs: any,
+  mathJs: unknown,
   storage: PluginStorageAPI,
   events: PluginEventAPI,
   ui: PluginUIAPI
@@ -63,7 +63,7 @@ export function createPluginAPI(
  */
 function createDashboardAPI(
   dashboard: DashboardAPI,
-  permissions: PluginPermission[]
+  _permissions: PluginPermission[]
 ): DashboardAPI {
   return {
     registerTool: (tool) => {
@@ -99,10 +99,10 @@ function createDashboardAPI(
 function createStorageAPI(
   storage: PluginStorageAPI,
   pluginId: string,
-  permissions: PluginPermission[]
+  _permissions: PluginPermission[]
 ): PluginStorageAPI {
   // Check if plugin has storage permission
-  const hasStoragePermission = permissions.some(p => 
+  const hasStoragePermission = _permissions.some((p: PluginPermission) => 
     p === 'storage' || p === 'storage.local' || p === 'storage.cloud'
   );
   
@@ -170,12 +170,12 @@ function createStorageAPI(
 function createEventAPI(
   events: PluginEventAPI,
   pluginId: string,
-  permissions: PluginPermission[]
+  _permissions: PluginPermission[]
 ): PluginEventAPI {
   return {
     subscribe: (eventName, callback) => {
       // Wrap callback to add plugin ID to context
-      const wrappedCallback = (data: any) => {
+      const wrappedCallback = (data: unknown) => {
         try {
           callback(data);
         } catch (error) {
@@ -192,11 +192,19 @@ function createEventAPI(
         ? eventName 
         : `plugin:${pluginId}:${eventName}`;
       
-      // Publish the event
-      events.publish(namespacedEventName, {
-        ...data,
-        source: pluginId
-      });
+      // Publish the event with source info
+      if (data && typeof data === 'object') {
+        events.publish(namespacedEventName, {
+          ...(data as Record<string, unknown>),
+          source: pluginId
+        });
+      } else {
+        // If data is not an object, wrap it
+        events.publish(namespacedEventName, {
+          value: data,
+          source: pluginId
+        });
+      }
     }
   };
 }
@@ -210,10 +218,10 @@ function createEventAPI(
  */
 function createUIAPI(
   ui: PluginUIAPI,
-  permissions: PluginPermission[]
+  _permissions: PluginPermission[]
 ): PluginUIAPI {
   // Check if plugin has notifications permission
-  const hasNotificationsPermission = permissions.includes('notifications');
+  const hasNotificationsPermission = _permissions.includes('notifications');
   
   return {
     showNotification: (message, options) => {

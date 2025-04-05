@@ -108,11 +108,11 @@ export interface MenuItemDefinition {
  */
 export interface PluginConfigParameter {
   type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  default?: any;
+  default?: unknown;
   description?: string;
   min?: number;
   max?: number;
-  options?: any[];
+  options?: unknown[];
   required?: boolean;
 }
 
@@ -154,7 +154,7 @@ export type PluginStatus =
  */
 export interface PluginAPI {
   dashboard: DashboardAPI;
-  mathJs: any; // This will be defined by math-js library
+  mathJs: unknown; // This will be defined by math-js library
   storage: PluginStorageAPI;
   events: PluginEventAPI;
   ui: PluginUIAPI;
@@ -164,10 +164,10 @@ export interface PluginAPI {
  * Dashboard API available to plugins
  */
 export interface DashboardAPI {
-  registerTool: (tool: { id: string; name: string; icon: string; component: any }) => void;
-  registerPanel: (panel: { id: string; component: any }) => void;
-  registerVisualization: (visualization: { id: string; component: any }) => void;
-  showResult: (result: any) => void;
+  registerTool: (tool: { id: string; name: string; icon: string; component: unknown }) => void;
+  registerPanel: (panel: { id: string; component: unknown }) => void;
+  registerVisualization: (visualization: { id: string; component: unknown }) => void;
+  showResult: (result: unknown) => void;
   showError: (error: Error | string) => void;
   updateProgressBar: (progress: number) => void;
 }
@@ -176,8 +176,8 @@ export interface DashboardAPI {
  * Storage API available to plugins
  */
 export interface PluginStorageAPI {
-  getItem: (key: string) => Promise<any>;
-  setItem: (key: string, value: any) => Promise<void>;
+  getItem: (key: string) => Promise<unknown>;
+  setItem: (key: string, value: unknown) => Promise<void>;
   removeItem: (key: string) => Promise<void>;
   clear: () => Promise<void>;
   keys: () => Promise<string[]>;
@@ -187,8 +187,8 @@ export interface PluginStorageAPI {
  * Event API available to plugins
  */
 export interface PluginEventAPI {
-  subscribe: (eventName: string, callback: (data: any) => void) => () => void;
-  publish: (eventName: string, data: any) => void;
+  subscribe: (eventName: string, callback: (data: unknown) => void) => () => void;
+  publish: (eventName: string, data: unknown) => void;
 }
 
 /**
@@ -196,7 +196,7 @@ export interface PluginEventAPI {
  */
 export interface PluginUIAPI {
   showNotification: (message: string, options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }) => void;
-  showModal: (title: string, content: any) => Promise<void>;
+  showModal: (title: string, content: unknown) => Promise<void>;
   showConfirm: (message: string) => Promise<boolean>;
 }
 
@@ -205,26 +205,26 @@ export interface PluginUIAPI {
  */
 export interface PluginInstance {
   // Plugin initialization function
-  initialize: (dashboard: DashboardAPI, mathJs: any, config: any) => Promise<{ success: boolean; error?: string }>;
+  initialize: (dashboard: DashboardAPI, mathJs: unknown, config: unknown) => Promise<{ success: boolean; error?: string }>;
   
   // Plugin cleanup function
   cleanup: () => Promise<{ success: boolean; error?: string }>;
   
   // UI Components exposed to dashboard
   components?: {
-    panels?: Record<string, any>;
-    visualizations?: Record<string, any>;
-    toolbarItems?: Record<string, any>;
+    panels?: Record<string, unknown>;
+    visualizations?: Record<string, unknown>;
+    toolbarItems?: Record<string, unknown>;
   };
   
   // Methods that extend math-js functionality
-  methods?: Record<string, (...args: any[]) => any>;
+  methods?: Record<string, (...args: unknown[]) => unknown>;
   
   // Event listeners
-  events?: Record<string, (event: any) => void>;
+  events?: Record<string, (event: unknown) => void>;
   
   // Public API for other plugins
-  api?: Record<string, any>;
+  api?: Record<string, unknown>;
 }
 
 /**

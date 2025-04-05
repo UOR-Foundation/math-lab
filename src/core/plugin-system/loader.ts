@@ -4,7 +4,12 @@
  * Handles loading plugins from various sources.
  */
 
-import { PluginManifest, PluginInstance, PluginLoaderOptions, PluginStatus } from './types';
+import {
+  PluginManifest,
+  PluginInstance,
+  PluginLoaderOptions,
+  DashboardAPI
+} from './types';
 import { pluginRegistry } from './registry';
 import { createSandbox } from './sandbox';
 import { validateManifest } from './validator';
@@ -69,8 +74,8 @@ export async function loadPlugin(
  */
 export async function initializePlugin(
   id: string,
-  dashboard: any,
-  mathJs: any
+  dashboard: DashboardAPI,
+  mathJs: unknown
 ): Promise<void> {
   const plugin = pluginRegistry.getPlugin(id);
   if (!plugin) {
@@ -263,17 +268,17 @@ function createPluginInstance(
     
     moduleFactory(module, module.exports);
     
-    const pluginExports = module.exports;
+    const pluginExports = module.exports as { default?: PluginInstance };
     
     // Check for default export
-    const pluginInstance = pluginExports.default || pluginExports;
+    const pluginInstance = pluginExports.default || pluginExports as unknown as PluginInstance;
     
     // Validate plugin instance
     if (!pluginInstance || typeof pluginInstance.initialize !== 'function') {
       throw new Error(`Invalid plugin instance - missing initialize method`);
     }
     
-    return pluginInstance as PluginInstance;
+    return pluginInstance;
   } catch (error) {
     throw new Error(`Failed to create plugin instance: ${String(error)}`);
   }
