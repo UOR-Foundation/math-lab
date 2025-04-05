@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Math Lab Discussions
+    url: https://github.com/uor-foundation/math-lab/discussions
+    about: Please ask and answer questions here
+  - name: Math Lab Documentation
+    url: https://github.com/uor-foundation/math-lab/wiki
+    about: Check our documentation before opening an issue
+  - name: Security Issues
+    url: https://github.com/uor-foundation/math-lab/security/policy
+    about: Please report security vulnerabilities here
