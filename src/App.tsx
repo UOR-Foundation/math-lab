@@ -1,21 +1,32 @@
-import { useCallback } from 'react';
+import { useCallback, useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useAppDispatch } from './hooks/useAppDispatch';
 import { useAppSelector } from './hooks/useAppSelector';
 import DashboardLayout from './components/dashboard/DashboardLayout';
+import Calculator from './components/dashboard/Calculator';
+import Visualize from './components/dashboard/Visualize';
+import Plugins from './components/dashboard/Plugins';
+import Settings from './components/dashboard/Settings';
 import { addResult, startEvaluation } from './store/slices/expressionSlice';
 import { RootState } from './store';
 
 const App = () => {
   const dispatch = useAppDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
   const results = useAppSelector((state: RootState) => state.expression.history);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
   
-  // We're not using panels yet but will in the future
-  // const panels = useAppSelector((state: RootState) => {
-  //   const currentWorkspace = state.workspace.workspaces.find(
-  //     (w) => w.id === state.workspace.currentWorkspaceId
-  //   );
-  //   return currentWorkspace ? currentWorkspace.panels : [];
-  // });
+  // Set the active panel based on the current route when the app loads
+  useEffect(() => {
+    const path = location.pathname.substring(1);
+    if (path) {
+      setActivePanel(path);
+    } else {
+      // Default to calculator if no route is specified
+      navigate('/calculator');
+    }
+  }, [location.pathname, navigate]);
 
   // Placeholder for actual computation implementation
   const handleCommandExecute = useCallback((command: string) => {
@@ -48,17 +59,48 @@ const App = () => {
   }, [dispatch]);
 
   const handleNavigate = useCallback((destination: string) => {
-    // This would typically update the current view or active panel
-    console.log(`Navigating to: ${destination}`);
-  }, []);
+    navigate(`/${destination}`);
+    setActivePanel(destination);
+  }, [navigate]);
+
+  // Determine which panel to render based on the active panel state
+  const renderPanel = () => {
+    switch (activePanel) {
+      case 'calculator':
+        return <Calculator />;
+      case 'visualize':
+        return <Visualize />;
+      case 'plugins':
+        return <Plugins />;
+      case 'settings':
+        return <Settings />;
+      default:
+        return null;
+    }
+  };
+
+  const panels = activePanel ? [
+    {
+      id: activePanel,
+      title: activePanel.charAt(0).toUpperCase() + activePanel.slice(1),
+      component: renderPanel(),
+    }
+  ] : [];
 
   return (
-    <DashboardLayout
-      onCommandExecute={handleCommandExecute}
-      onNavigate={handleNavigate}
-      results={results}
-      panels={[]} // We'll populate this with actual panels later
-    />
+    <Routes>
+      <Route 
+        path="/*" 
+        element={
+          <DashboardLayout
+            onCommandExecute={handleCommandExecute}
+            onNavigate={handleNavigate}
+            results={results}
+            panels={panels}
+          />
+        } 
+      />
+    </Routes>
   );
 };
 
