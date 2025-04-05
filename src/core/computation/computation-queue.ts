@@ -72,7 +72,7 @@ export class ComputationQueue {
    */
   public createTask<T>(
     type: string,
-    payload: any,
+    payload: unknown,
     priority: TaskPriority = TaskPriority.NORMAL,
     onProgress?: (progress: number) => void
   ): ComputationTask<T> {
