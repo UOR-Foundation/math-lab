@@ -11,7 +11,13 @@ export * from './types';
 export { pluginRegistry } from './registry';
 
 // Export plugin loading functions
-export { loadPlugin, initializePlugin, unloadPlugin } from './loader';
+export { 
+  loadPlugin, 
+  initializePlugin, 
+  unloadPlugin, 
+  clearPluginCache, 
+  getCacheInfo 
+} from './loader';
 
 // Export plugin manager
 export { createPluginManager, PluginManager } from './manager';
