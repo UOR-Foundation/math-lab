@@ -55,7 +55,7 @@ jobs:
       - name: Configure base path
         if: github.event.inputs.environment == 'staging'
         run: |
-          echo "::set-output name=base_path::/math-lab/staging"
+          echo "base_path=/math-lab/staging" >> $GITHUB_OUTPUT
           # Update base path in index.html
           sed -i 's|<base href="/">|<base href="/math-lab/staging/">|g' dist/index.html
         id: config
@@ -63,7 +63,7 @@ jobs:
       - name: Configure production base path
         if: github.event.inputs.environment != 'staging'
         run: |
-          echo "::set-output name=base_path::/math-lab"
+          echo "base_path=/math-lab" >> $GITHUB_OUTPUT
           # Update base path in index.html
           sed -i 's|<base href="/">|<base href="/math-lab/">|g' dist/index.html
         id: config-prod
@@ -79,10 +79,8 @@ jobs:
           user_email: 'github-actions[bot]@users.noreply.github.com'
           commit_message: 'Deploy to ${{ github.event.inputs.environment || "production" }}: ${{ github.event.head_commit.message }}'
 
-      - name: Create deployment status
-        uses: chrnorm/deployment-status@v2
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          environment: ${{ github.event.inputs.environment || 'production' }}
-          state: success
-          deployment-url: https://${{ secrets.CNAME || 'uor-foundation.github.io' }}${{ steps.config.outputs.base_path || steps.config-prod.outputs.base_path }}
+      # Create a deployment status (simplified)
+      - name: Set deployment status
+        run: |
+          echo "Deployment completed to ${{ github.event.inputs.environment || 'production' }}"
+          echo "URL: https://uor-foundation.github.io${{ steps.config.outputs.base_path || steps.config-prod.outputs.base_path }}"
