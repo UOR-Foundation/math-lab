@@ -6,11 +6,17 @@ labels: plugin
 assignees: ''
 ---
 
-## Plugin Description
+## Plugin Information
+- **Name**: <!-- Plugin name -->
+- **Version**: <!-- Current version, e.g., 1.0.0 -->
+- **Author**: <!-- Your name or organization -->
+- **Repository**: <!-- Link to plugin repository if available -->
 
-A clear and concise description of what the plugin does.
+## Plugin Description
+<!-- A clear and concise description of what the plugin does and its purpose -->
 
 ## Plugin Type
+<!-- Select all that apply by changing [ ] to [x] -->
 
 - [ ] Core Extension (extends math-js functionality)
 - [ ] Visualization (adds new visualization types)
@@ -21,22 +27,39 @@ A clear and concise description of what the plugin does.
 - [ ] Theme (visual customization)
 - [ ] Language Pack (localization)
 
-## Features
-
-List the key features of your plugin.
+## Key Features
+<!-- List the key features of your plugin -->
+1. 
+2. 
+3. 
 
 ## Screenshots/Demos
+<!-- If applicable, add screenshots or links to demos -->
 
-If applicable, add screenshots or links to demos.
+## Documentation
+<!-- Describe the documentation provided with the plugin -->
+- [ ] README
+- [ ] API documentation
+- [ ] Usage examples
+- [ ] Tutorials
 
-## Requirements
+## Technical Details
+### Dependencies
+<!-- List any dependencies or special requirements -->
 
-List any dependencies or special requirements for your plugin.
+### Permissions Required
+<!-- List any permissions your plugin needs -->
+- [ ] Storage access
+- [ ] Intensive computation
+- [ ] External API access
+- [ ] Other: ______
 
 ## Testing
+<!-- Describe how you've tested the plugin -->
 
-Describe how you've tested the plugin.
+## Compatibility
+- Minimum Math Lab version: <!-- e.g., 1.0.0 -->
+- Compatible browsers: <!-- e.g., Chrome 120+, Firefox 110+ -->
 
 ## Additional Information
-
-Any other information you want to provide about the plugin.
+<!-- Any other information you want to provide about the plugin -->
