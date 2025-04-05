@@ -5,7 +5,7 @@
  */
 
 import { PluginBase } from './plugin-base';
-import { PluginMethod, PluginEventHandler, PluginComponent, VisualizationComponent } from './types';
+import type { PluginComponent, VisualizationComponent } from './types';
 
 /**
  * Method decorator for registering a plugin method
@@ -14,7 +14,7 @@ import { PluginMethod, PluginEventHandler, PluginComponent, VisualizationCompone
  * @returns Method decorator
  */
 export function method(methodId: string) {
-  return function(target: PluginBase, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function(target: PluginBase, _propertyKey: string, descriptor: PropertyDescriptor) {
     // Store original method
     const originalMethod = descriptor.value;
     
@@ -33,7 +33,7 @@ export function method(methodId: string) {
  * @returns Event handler decorator
  */
 export function eventHandler(eventName: string) {
-  return function(target: PluginBase, propertyKey: string, descriptor: PropertyDescriptor) {
+  return function(target: PluginBase, _propertyKey: string, descriptor: PropertyDescriptor) {
     // Store original method
     const originalMethod = descriptor.value;
     
@@ -54,7 +54,8 @@ export function eventHandler(eventName: string) {
 export function panel(panelId: string) {
   return function(target: PluginBase, propertyKey: string) {
     // Get the component from the property
-    const component = target[propertyKey] as PluginComponent;
+    // We need to cast to unknown first to satisfy TypeScript
+    const component = (target as unknown as Record<string, PluginComponent>)[propertyKey];
     
     // Register the panel with the plugin
     target.registerPanel(panelId, component);
@@ -70,7 +71,8 @@ export function panel(panelId: string) {
 export function visualization(visualizationId: string) {
   return function(target: PluginBase, propertyKey: string) {
     // Get the component from the property
-    const component = target[propertyKey] as VisualizationComponent;
+    // We need to cast to unknown first to satisfy TypeScript
+    const component = (target as unknown as Record<string, VisualizationComponent>)[propertyKey];
     
     // Register the visualization with the plugin
     target.registerVisualization(visualizationId, component);

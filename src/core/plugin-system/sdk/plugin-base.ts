@@ -4,7 +4,7 @@
  * Provides a base class for creating plugins with TypeScript
  */
 
-import {
+import type {
   PluginManifest,
   PluginInstance,
   PluginMetadata,
@@ -15,7 +15,10 @@ import {
   VisualizationComponent,
 } from './types';
 
-import { createManifest, createPluginInstance } from './helpers';
+// Re-export the PluginContext type for use in plugins
+export type { PluginContext };
+
+import { createManifest } from './helpers';
 
 /**
  * Abstract base class for creating plugins
@@ -50,7 +53,7 @@ export abstract class PluginBase {
    * @param context Plugin context with API and configuration
    * @returns Initialization result
    */
-  async initialize(context: PluginContext): Promise<{ success: boolean; error?: string }> {
+  async initialize(_context: PluginContext): Promise<{ success: boolean; error?: string }> {
     return { success: true };
   }
   
@@ -80,8 +83,7 @@ export abstract class PluginBase {
    * @returns Plugin instance
    */
   getInstance(): PluginInstance {
-    const self = this;
-    
+    // Use an arrow function to preserve 'this' context
     return {
       // Initialize the plugin
       initialize: async (dashboard, mathJs, config) => {
@@ -91,15 +93,30 @@ export abstract class PluginBase {
             api: {
               dashboard,
               mathJs,
-              storage: {} as any, // These will be properly injected by the plugin system
-              events: {} as any,
-              ui: {} as any,
+              // We need to cast explicitly to satisfy TypeScript
+              // These are placeholders that will be properly injected by the plugin system
+              storage: {
+                getItem: async () => null,
+                setItem: async () => {},
+                removeItem: async () => {},
+                clear: async () => {},
+                keys: async () => []
+              },
+              events: {
+                subscribe: () => () => {},
+                publish: () => {}
+              },
+              ui: {
+                showNotification: () => {},
+                showModal: async () => {},
+                showConfirm: async () => false
+              },
             },
             config: config as Record<string, unknown>,
           };
           
           // Call plugin's initialize method
-          return await self.initialize(context);
+          return await this.initialize(context);
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(`Failed to initialize plugin: ${this.metadata.name}`, errorMessage);
@@ -110,7 +127,7 @@ export abstract class PluginBase {
       // Clean up the plugin
       cleanup: async () => {
         try {
-          return await self.cleanup();
+          return await this.cleanup();
         } catch (error) {
           const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(`Failed to clean up plugin: ${this.metadata.name}`, errorMessage);
@@ -122,10 +139,12 @@ export abstract class PluginBase {
       components: this.metadata.components,
       
       // Plugin methods
-      methods: this.metadata.methods,
+      // Need to cast to satisfy TypeScript
+      methods: this.metadata.methods as Record<string, (...args: unknown[]) => unknown> | undefined,
       
       // Plugin event handlers
-      events: this.metadata.events,
+      // Need to cast to satisfy TypeScript
+      events: this.metadata.events as Record<string, (event: unknown) => void> | undefined,
     };
   }
   

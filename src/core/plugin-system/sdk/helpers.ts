@@ -43,7 +43,7 @@ export function createManifest(
 export function createPluginInstance(metadata: PluginMetadata): PluginInstance {
   return {
     // Initialize the plugin
-    initialize: async (dashboard, mathJs, config) => {
+    initialize: async (_dashboard, _mathJs, _config) => {
       try {
         console.log(`Initializing plugin: ${metadata.name}`);
         return { success: true };
@@ -70,10 +70,12 @@ export function createPluginInstance(metadata: PluginMetadata): PluginInstance {
     components: metadata.components,
     
     // Plugin methods
-    methods: metadata.methods,
+    // Need to cast to satisfy TypeScript
+    methods: metadata.methods as Record<string, (...args: unknown[]) => unknown> | undefined,
     
     // Plugin event handlers
-    events: metadata.events,
+    // Need to cast to satisfy TypeScript
+    events: metadata.events as Record<string, (event: unknown) => void> | undefined,
   };
 }
 

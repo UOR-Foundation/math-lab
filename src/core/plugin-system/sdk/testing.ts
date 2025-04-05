@@ -99,7 +99,6 @@ export function createMockPluginAPI(overrides?: Partial<PluginAPI>): PluginAPI {
  * Plugin test harness for testing plugins
  */
 export class PluginTestHarness {
-  private manifest: PluginManifest;
   private instance: PluginInstance;
   private api: PluginAPI;
   
@@ -111,11 +110,10 @@ export class PluginTestHarness {
    * @param api Optional mock API (defaults to standard mocks)
    */
   constructor(
-    manifest: PluginManifest,
+    _manifest: PluginManifest,
     instance: PluginInstance,
     api?: PluginAPI
   ) {
-    this.manifest = manifest;
     this.instance = instance;
     this.api = api || createMockPluginAPI();
   }

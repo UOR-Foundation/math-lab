@@ -4,7 +4,7 @@
  * Example implementation of a basic plugin using the SDK
  */
 
-import { PluginBase, PluginContext } from '../plugin-base';
+import { PluginBase, type PluginContext } from '../plugin-base';
 import { method, eventHandler, panel, visualization } from '../decorators';
 import { PluginComponentProps, VisualizationComponentProps } from '../types';
 

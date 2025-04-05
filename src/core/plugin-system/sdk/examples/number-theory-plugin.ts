@@ -4,7 +4,7 @@
  * Example implementation of a number theory plugin using the SDK
  */
 
-import { PluginBase, PluginContext } from '../plugin-base';
+import { PluginBase, type PluginContext } from '../plugin-base';
 import { method, eventHandler, panel, visualization } from '../decorators';
 import { PluginComponentProps, VisualizationComponentProps } from '../types';
 
@@ -247,7 +247,7 @@ export class NumberTheoryPlugin extends PluginBase {
    */
   @eventHandler('dashboard:calculation-complete')
   handleCalculationComplete(context: PluginContext, event: unknown): void {
-    const { result, expression } = event as { result: number; expression: string };
+    const { result } = event as { result: number; expression: string };
     
     // Only process if the result is a positive integer
     if (Number.isInteger(result) && result > 0) {
@@ -264,7 +264,7 @@ export class NumberTheoryPlugin extends PluginBase {
    */
   @panel('number-theory-panel')
   NumberTheoryPanel = (props: PluginComponentProps) => {
-    const { dashboard, ui } = props;
+    const { ui } = props;
     
     // Example handlers
     const analyzePrimeFactors = async () => {

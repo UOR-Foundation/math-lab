@@ -36,6 +36,8 @@ export interface PluginContext {
   config: Record<string, unknown>;
 }
 
+// This context is exported by the interface declaration above
+
 /**
  * Plugin initialization result
  */
