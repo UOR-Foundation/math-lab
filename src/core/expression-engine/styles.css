@@ -1,0 +1,48 @@
+/* Expression engine syntax highlighting styles */
+
+/* Number tokens */
+.expression-number {
+  color: #0066cc;
+  font-weight: bold;
+}
+
+/* Function tokens */
+.expression-function {
+  color: #6f42c1;
+  font-weight: bold;
+}
+
+/* Variable tokens */
+.expression-variable {
+  color: #28a745;
+}
+
+/* Operator tokens */
+.expression-operator {
+  color: #e83e8c;
+  font-weight: bold;
+}
+
+/* Parenthesis tokens */
+.expression-paren {
+  color: #6c757d;
+}
+
+/* Unknown tokens */
+.expression-unknown {
+  color: #dc3545;
+  text-decoration: underline;
+}
+
+/* Whitespace tokens */
+.expression-whitespace {
+  /* Invisible but takes up space */
+  color: transparent;
+}
+
+/* Error highlighting */
+.expression-error {
+  color: #dc3545;
+  text-decoration: underline wavy;
+  background-color: rgba(255, 0, 0, 0.1);
+}

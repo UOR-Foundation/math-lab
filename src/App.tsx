@@ -1,17 +1,14 @@
 import { useCallback, useState, useEffect } from 'react';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
-import { useAppDispatch } from './hooks/useAppDispatch';
 import { useAppSelector } from './hooks/useAppSelector';
 import DashboardLayout from './components/dashboard/DashboardLayout';
 import Calculator from './components/dashboard/Calculator';
 import Visualize from './components/dashboard/Visualize';
 import Plugins from './components/dashboard/Plugins';
 import Settings from './components/dashboard/Settings';
-import { addResult, startEvaluation } from './store/slices/expressionSlice';
 import type { RootState } from './store';
 
 const App = () => {
-  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
   const results = useAppSelector((state: RootState) => state.expression.history);
@@ -28,35 +25,17 @@ const App = () => {
     }
   }, [location.pathname, navigate]);
 
-  // Placeholder for actual computation implementation
-  const handleCommandExecute = useCallback((command: string) => {
-    dispatch(startEvaluation());
+  const handleCommandExecute = useCallback((command: string, result: string) => {
+    // The expression has already been evaluated by the CommandBar component
+    // using our expression engine. It also updates the Redux store.
+    // We can handle any additional side effects here if needed.
+    console.log(`Executed: ${command} = ${result}`);
     
-    // This is just a placeholder. In a real implementation, you would:
-    // 1. Parse the expression
-    // 2. Execute it using math-js library
-    // 3. Add the result to the store
-    
-    // Simulate a simple calculator for now
-    try {
-      // In the real implementation, you would use a proper math expression parser.
-      // We're using Function constructor instead of eval for safety
-      // and to avoid eslint errors
-      const calculateResult = new Function(`return ${command}`)();
-      const result = calculateResult.toString();
-      
-      dispatch(addResult({
-        expression: command,
-        result: result,
-      }));
-    } catch (error) {
-      dispatch(addResult({
-        expression: command,
-        result: 'Error',
-        error: error instanceof Error ? error.message : 'Unknown error',
-      }));
+    // Example: Switch to calculator panel for calculation operations
+    if (!activePanel || activePanel !== 'calculator') {
+      navigate('/calculator');
     }
-  }, [dispatch]);
+  }, [navigate, activePanel]);
 
   const handleNavigate = useCallback((destination: string) => {
     navigate(`/${destination}`);
