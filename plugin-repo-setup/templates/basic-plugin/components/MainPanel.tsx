@@ -3,13 +3,13 @@ import React, { useState, useEffect } from 'react';
 /**
  * Main panel component for the basic plugin
  */
-const MainPanel: React.FC<{ dashboard: any }> = ({ dashboard }) => {
+const MainPanel: React.FC<{ dashboard: Record<string, unknown> }> = ({ dashboard }) => {
   const [value, setValue] = useState<number>(0);
   const [result, setResult] = useState<number | null>(null);
 
   useEffect(() => {
     // You can use dashboard features here
-    const unsubscribe = dashboard.events.subscribe('expression:evaluated', (data) => {
+    const unsubscribe = dashboard.events.subscribe('expression:evaluated', (_eventData) => {
       // React to events
     });
 
