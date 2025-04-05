@@ -30,3 +30,22 @@ export { validateManifest } from './validator';
 
 // Export sandbox creator
 export { createSandbox } from './sandbox';
+
+// Export plugin API service
+export { 
+  PluginApiService, 
+  getPluginApiService 
+} from './service';
+
+// Export API implementations 
+export {
+  createDashboardApiImpl,
+  createStorageApiImpl,
+  createEventApiImpl,
+  createUiApiImpl,
+  eventBus,
+  setModalResolver,
+  resolveActiveModal,
+  setConfirmResolver,
+  resolveActiveConfirm
+} from './implementations';
