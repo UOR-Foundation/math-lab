@@ -43,8 +43,7 @@ export interface ExecutionOptions {
 export class ComputationExecutor {
   private workerManager: WorkerManager;
   private queue: ComputationQueue;
-  // Worker path stored for potential future use
-  private readonly _workerPath: string; // eslint-disable-line @typescript-eslint/no-unused-vars
+  // Worker implementation details managed by WorkerManager
   
   /**
    * Create a new computation executor
@@ -52,7 +51,7 @@ export class ComputationExecutor {
    * @param workerCount - Optional number of workers to create
    */
   constructor(workerPath: string, workerCount?: number) {
-    this._workerPath = workerPath;
+    // Worker path is passed directly to the worker manager
     this.workerManager = new WorkerManager(workerPath, workerCount);
     this.queue = new ComputationQueue();
   }
