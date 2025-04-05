@@ -2,6 +2,13 @@ import { Parser } from './parser';
 import { SyntaxHighlighter } from './syntax-highlighter';
 import { Evaluator, defaultContext } from './evaluator';
 import { AutoCompletionProvider } from './auto-completion';
+
+// Export implementation classes for direct use
+export { Parser } from './parser';
+export { Tokenizer } from './tokenizer';
+export { SyntaxHighlighter } from './syntax-highlighter';
+export { Evaluator } from './evaluator';
+export { AutoCompletionProvider as AutoCompletion } from './auto-completion';
 import {
   EvaluationContext,
   SyntaxStyles,

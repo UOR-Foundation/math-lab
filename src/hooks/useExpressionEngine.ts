@@ -1,81 +1,82 @@
-import { useMemo, useRef, useEffect } from 'react';
-import { useAppDispatch } from './useAppDispatch';
-import { useAppSelector } from './useAppSelector';
-import { ExpressionEngine } from '../core/expression-engine';
-import { setCurrentExpression, startEvaluation, addResult } from '../store/slices/expressionSlice';
+import { useState, useCallback } from 'react';
+import { 
+  Parser, 
+  Tokenizer, 
+  SyntaxHighlighter, 
+  AutoCompletion, 
+  Evaluator 
+} from '../core/expression-engine';
+import { 
+  ParseResult, 
+  SyntaxError, 
+  ExpressionSuggestion 
+} from '../core/expression-engine/types';
+
+interface UseExpressionEngineResult {
+  parseExpression: (expression: string) => void;
+  evaluateExpression: (expression: string) => unknown;
+  highlightedExpression: string;
+  suggestions: ExpressionSuggestion[];
+  parsedExpression: ParseResult | null;
+  errors: SyntaxError[];
+}
 
 /**
- * Hook for using the expression engine in React components
+ * Hook for using the expression engine in components
  */
-export const useExpressionEngine = () => {
-  // Get Redux state and dispatch
-  const dispatch = useAppDispatch();
-  const { currentExpression, isEvaluating, history } = useAppSelector(
-    (state) => state.expression
-  );
-
-  // Create a memoized expression engine instance
-  const engineRef = useRef<ExpressionEngine | null>(null);
+export function useExpressionEngine(): UseExpressionEngineResult {
+  const [parser] = useState(new Parser());
+  const [tokenizer] = useState(new Tokenizer());
+  const [highlighter] = useState(new SyntaxHighlighter());
+  const [autoCompletion] = useState(new AutoCompletion());
+  const [evaluator] = useState(new Evaluator());
   
-  if (engineRef.current === null) {
-    engineRef.current = new ExpressionEngine();
-  }
+  const [parsedExpression, setParsedExpression] = useState<ParseResult | null>(null);
+  const [highlightedExpression, setHighlightedExpression] = useState('');
+  const [suggestions, setSuggestions] = useState<ExpressionSuggestion[]>([]);
+  const [errors, setErrors] = useState<SyntaxError[]>([]);
   
-  // Memoize common operations
-  const engine = useMemo(() => {
-    return {
-      // Parse and validate an expression
-      parse: (expression: string) => {
-        return engineRef.current!.parse(expression);
-      },
-      
-      // Evaluate an expression and store result in Redux
-      evaluate: (expression: string) => {
-        dispatch(startEvaluation());
-        
-        const result = engineRef.current!.evaluate(expression);
-        
-        dispatch(addResult({
-          expression,
-          result: result.error ? `Error: ${result.error}` : String(result.value),
-          error: result.error
-        }));
-        
-        return result;
-      },
-      
-      // Get syntax highlighting tokens
-      highlightSyntax: (expression: string) => {
-        return engineRef.current!.highlightSyntax(expression);
-      },
-      
-      // Get HTML with syntax highlighting
-      getHighlightedHtml: (expression: string) => {
-        return engineRef.current!.renderHighlightedHtml(expression);
-      },
-      
-      // Get auto-completion suggestions
-      getSuggestions: (expression: string, cursorPosition: number) => {
-        return engineRef.current!.getSuggestions(expression, cursorPosition);
-      },
-      
-      // Update the current expression in Redux
-      updateExpression: (expression: string) => {
-        dispatch(setCurrentExpression(expression));
-      }
-    };
-  }, [dispatch]);
-
-  // Sync expression history with engine when the component mounts
-  useEffect(() => {
-    // This would ideally populate the engine history from Redux
-    // but we're keeping the histories separate for now
-  }, []);
-
+  /**
+   * Parse an expression and update the state
+   */
+  const parseExpression = useCallback((expression: string) => {
+    // Tokenize for syntax highlighting
+    const tokens = tokenizer.tokenize(expression);
+    const highlightedTokens = highlighter.highlight(tokens, errors);
+    const htmlString = highlighter.renderToHtml('', Array.isArray(highlightedTokens) ? highlightedTokens : []);
+    setHighlightedExpression(htmlString);
+    
+    // Parse for AST and errors
+    const parseResult = parser.parse(expression);
+    setParsedExpression(parseResult);
+    setErrors(parseResult.errors);
+    
+    // Generate suggestions
+    const cursorPosition = expression.length; // Default to end of expression
+    const suggestions = autoCompletion.getSuggestions(expression, cursorPosition, parseResult.tokens);
+    setSuggestions(suggestions);
+  }, [tokenizer, highlighter, parser, autoCompletion, errors]);
+  
+  /**
+   * Evaluate an expression and return the result
+   */
+  const evaluateExpression = useCallback((expression: string) => {
+    const parseResult = parser.parse(expression);
+    
+    if (parseResult.errors.length > 0 || !parseResult.ast) {
+      throw new Error(parseResult.errors[0]?.message || 'Invalid expression');
+    }
+    
+    const result = evaluator.evaluate(parseResult.ast);
+    return result.value;
+  }, [parser, evaluator]);
+  
   return {
-    engine,
-    currentExpression,
-    isEvaluating,
-    history
+    parseExpression,
+    evaluateExpression,
+    highlightedExpression,
+    suggestions,
+    parsedExpression,
+    errors
   };
-};
+}

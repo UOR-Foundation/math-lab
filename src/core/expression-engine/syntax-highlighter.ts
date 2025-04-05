@@ -35,7 +35,7 @@ export class SyntaxHighlighter {
    * @param errors - Optional syntax errors to mark
    * @returns Tokens with style information
    */
-  public highlight(tokens: Token[], errors: SyntaxError[] = []): TokenWithStyle[] {
+  public highlight(tokens: Token[], errors: SyntaxError[] = []): TokenWithStyle[] | string {
     // Map tokens to positions with errors
     const errorPositions: Record<number, boolean> = {};
     

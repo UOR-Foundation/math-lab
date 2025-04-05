@@ -2,9 +2,11 @@ import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
 export interface ResultData {
   id: string;
-  type: string;
+  type?: string;
   value: unknown;
-  metadata: Record<string, unknown>;
+  timestamp?: string;
+  duration?: number;
+  metadata?: Record<string, unknown>;
 }
 
 export interface ResultsState {
