@@ -9,7 +9,11 @@ import Plugins from './components/dashboard/Plugins';
 import Settings from './components/dashboard/Settings';
 import { Panel } from './components/dashboard/MainWorkspace';
 import { addPanel, setCurrentWorkspace } from './store/slices/workspaceSlice';
+import { VisualizationProvider, initializeVisualizations } from './core/visualization';
 import type { RootState } from './store';
+
+// Initialize the visualization registry with built-in visualizations
+initializeVisualizations();
 
 const App = () => {
   const navigate = useNavigate();
@@ -120,23 +124,25 @@ const App = () => {
   })) : [];
 
   return (
-    <Routes>
-      <Route 
-        path="/*" 
-        element={
-          <DashboardLayout
-            onCommandExecute={handleCommandExecute}
-            onNavigate={handleNavigate}
-            onWorkspaceChange={handleWorkspaceChange}
-            results={results}
-            panels={panels}
-            workspaces={workspaces}
-            currentWorkspaceId={currentWorkspaceId || undefined}
-            layout={currentWorkspace?.layout.type || 'grid'}
-          />
-        } 
-      />
-    </Routes>
+    <VisualizationProvider>
+      <Routes>
+        <Route 
+          path="/*" 
+          element={
+            <DashboardLayout
+              onCommandExecute={handleCommandExecute}
+              onNavigate={handleNavigate}
+              onWorkspaceChange={handleWorkspaceChange}
+              results={results}
+              panels={panels}
+              workspaces={workspaces}
+              currentWorkspaceId={currentWorkspaceId || undefined}
+              layout={currentWorkspace?.layout.type || 'grid'}
+            />
+          } 
+        />
+      </Routes>
+    </VisualizationProvider>
   );
 };
 
