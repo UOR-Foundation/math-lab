@@ -12,6 +12,18 @@ import {
 } from './types';
 
 /**
+ * Helper function to wrap Math functions to handle ExpressionValue types
+ */
+const wrapMathFunction = (fn: (x: number) => number): (arg: ExpressionValue) => ExpressionValue => {
+  return (arg: ExpressionValue): ExpressionValue => {
+    if (typeof arg !== 'number') {
+      throw new Error(`Expected a number but got ${typeof arg}`);
+    }
+    return fn(arg);
+  };
+};
+
+/**
  * Default evaluation context with standard functions and variables
  */
 export const defaultContext: EvaluationContext = {
@@ -21,53 +33,65 @@ export const defaultContext: EvaluationContext = {
   },
   functions: {
     // Trigonometric functions
-    sin: Math.sin,
-    cos: Math.cos,
-    tan: Math.tan,
-    asin: Math.asin,
-    acos: Math.acos,
-    atan: Math.atan,
+    sin: wrapMathFunction(Math.sin),
+    cos: wrapMathFunction(Math.cos),
+    tan: wrapMathFunction(Math.tan),
+    asin: wrapMathFunction(Math.asin),
+    acos: wrapMathFunction(Math.acos),
+    atan: wrapMathFunction(Math.atan),
     
     // Hyperbolic functions
-    sinh: Math.sinh,
-    cosh: Math.cosh,
-    tanh: Math.tanh,
+    sinh: wrapMathFunction(Math.sinh),
+    cosh: wrapMathFunction(Math.cosh),
+    tanh: wrapMathFunction(Math.tanh),
     
     // Logarithmic functions
-    log: Math.log10,
-    ln: Math.log,
-    log2: Math.log2,
+    log: wrapMathFunction(Math.log10),
+    ln: wrapMathFunction(Math.log),
+    log2: wrapMathFunction(Math.log2),
     
     // Exponential function
-    exp: Math.exp,
+    exp: wrapMathFunction(Math.exp),
     
     // Other mathematical functions
-    sqrt: Math.sqrt,
-    abs: Math.abs,
-    floor: Math.floor,
-    ceil: Math.ceil,
-    round: Math.round,
+    sqrt: wrapMathFunction(Math.sqrt),
+    abs: wrapMathFunction(Math.abs),
+    floor: wrapMathFunction(Math.floor),
+    ceil: wrapMathFunction(Math.ceil),
+    round: wrapMathFunction(Math.round),
     
     // Additional utility functions
-    gcd: (a: number, b: number): number => {
-      a = Math.abs(a as number);
-      b = Math.abs(b as number);
-      
-      while (b > 0) {
-        const temp = b;
-        b = a % b;
-        a = temp;
+    gcd: (a: ExpressionValue, b: ExpressionValue): ExpressionValue => {
+      if (typeof a !== 'number' || typeof b !== 'number') {
+        throw new Error(`Expected numbers but got ${typeof a} and ${typeof b}`);
       }
       
-      return a;
+      let x = Math.abs(a);
+      let y = Math.abs(b);
+      
+      while (y > 0) {
+        const temp = y;
+        y = x % y;
+        x = temp;
+      }
+      
+      return x;
     },
     
-    lcm: (a: number, b: number): number => {
-      const gcdVal = defaultContext.functions.gcd(a, b) as number;
-      return Math.abs((a as number) * (b as number)) / gcdVal;
+    lcm: (a: ExpressionValue, b: ExpressionValue): ExpressionValue => {
+      if (typeof a !== 'number' || typeof b !== 'number') {
+        throw new Error(`Expected numbers but got ${typeof a} and ${typeof b}`);
+      }
+      
+      const gcdValue = defaultContext.functions.gcd(a, b) as number;
+      return Math.abs(a * b) / gcdValue;
     },
     
-    factorial: (n: number): number => {
+    factorial: (n: ExpressionValue): ExpressionValue => {
+      if (typeof n !== 'number') {
+        throw new Error(`Expected a number but got ${typeof n}`);
+      }
+
       if (n < 0 || !Number.isInteger(n)) {
         throw new Error('Factorial is only defined for non-negative integers');
       }
@@ -80,7 +104,11 @@ export const defaultContext: EvaluationContext = {
       return result;
     },
     
-    isPrime: (n: number): boolean => {
+    isPrime: (n: ExpressionValue): ExpressionValue => {
+      if (typeof n !== 'number') {
+        throw new Error(`Expected a number but got ${typeof n}`);
+      }
+
       if (n <= 1 || !Number.isInteger(n)) return false;
       if (n <= 3) return true;
       if (n % 2 === 0 || n % 3 === 0) return false;
