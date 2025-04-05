@@ -102,7 +102,8 @@ export interface ParseResult {
 }
 
 // Expression result type
-export type ExpressionValue = number | string | boolean | null;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type ExpressionValue = number | string | boolean | Promise<any> | Record<string, any> | null;
 
 // Expression evaluation context
 export interface EvaluationContext {
