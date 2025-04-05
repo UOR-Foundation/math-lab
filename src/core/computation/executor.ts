@@ -41,9 +41,8 @@ export interface ExecutionOptions {
  * Manages the execution of computations
  */
 export class ComputationExecutor {
-  private workerManager: WorkerManager;
+  public readonly workerManager: WorkerManager;
   private queue: ComputationQueue;
-  // Worker implementation details managed by WorkerManager
   
   /**
    * Create a new computation executor

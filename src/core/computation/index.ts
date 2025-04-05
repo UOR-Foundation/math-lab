@@ -177,6 +177,25 @@ export class ComputationManager {
   public getResourceLimits(): ResourceLimits {
     return { ...this.resourceLimits };
   }
+  
+  /**
+   * Get current resource usage across all workers
+   * @returns Object containing current resource usage
+   */
+  public getResourceUsage(): { 
+    totalMemory?: number; 
+    averageMemory?: number; 
+    workerCount: number;
+    activeTaskCount: number;
+  } {
+    const workerUsage = this.executor.workerManager.getResourceUsage() || { workerCount: 0 };
+    const activeTasks = this.getTasks().filter(task => task.status === TaskStatus.RUNNING);
+    
+    return {
+      ...workerUsage,
+      activeTaskCount: activeTasks.length
+    };
+  }
 }
 
 // Export types
