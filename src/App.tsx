@@ -8,7 +8,7 @@ import Visualize from './components/dashboard/Visualize';
 import Plugins from './components/dashboard/Plugins';
 import Settings from './components/dashboard/Settings';
 import { addResult, startEvaluation } from './store/slices/expressionSlice';
-import { RootState } from './store';
+import type { RootState } from './store';
 
 const App = () => {
   const dispatch = useAppDispatch();
