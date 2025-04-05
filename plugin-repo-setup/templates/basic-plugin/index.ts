@@ -12,7 +12,7 @@ export default {
    * Plugin initialization function
    * Called when the plugin is loaded
    */
-  initialize: async (dashboard, mathJs, config) => {
+  initialize: async (dashboard, _mathJs, _config) => {
     console.log('Basic plugin initialized!');
     
     // You can set up event listeners, register callbacks, etc.
