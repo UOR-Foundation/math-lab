@@ -6,7 +6,7 @@ import Sidebar from './Sidebar';
 import ResultsArea from './ResultsArea';
 
 interface DashboardLayoutProps {
-  onCommandExecute?: (command: string) => void;
+  onCommandExecute?: (command: string, result: string) => void;
   onNavigate?: (destination: string) => void;
   results?: Array<{
     id: string;
