@@ -172,7 +172,7 @@ describe('PluginRegistry', () => {
     registry.enablePlugin('org.example.dependency-plugin');
     registry.updatePlugin(
       'org.example.dependency-plugin',
-      { initialize: async () => ({ success: true }) } as any,
+      { initialize: async () => ({ success: true }) } as unknown as PluginInstance,
       'initialized'
     );
     

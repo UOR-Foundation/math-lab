@@ -32,9 +32,9 @@ export function createSandbox(manifest: PluginManifest, code: string): PluginIns
     // Create a list of allowed globals
     const sandboxGlobals = {
       console: {
-        log: (...args: any[]) => console.log(`[Plugin ${manifest.id}]:`, ...args),
-        warn: (...args: any[]) => console.warn(`[Plugin ${manifest.id}]:`, ...args),
-        error: (...args: any[]) => console.error(`[Plugin ${manifest.id}]:`, ...args),
+        log: (...args: unknown[]) => console.log(`[Plugin ${manifest.id}]:`, ...args),
+        warn: (...args: unknown[]) => console.warn(`[Plugin ${manifest.id}]:`, ...args),
+        error: (...args: unknown[]) => console.error(`[Plugin ${manifest.id}]:`, ...args),
       },
       setTimeout,
       clearTimeout,
@@ -180,7 +180,7 @@ function wrapPluginInstance(
   if (instance.methods) {
     wrapped.methods = {};
     for (const [key, method] of Object.entries(instance.methods)) {
-      wrapped.methods[key] = (...args: any[]) => {
+      wrapped.methods[key] = (...args: unknown[]) => {
         try {
           return method(...args);
         } catch (error) {
@@ -195,7 +195,7 @@ function wrapPluginInstance(
   if (instance.events) {
     wrapped.events = {};
     for (const [key, handler] of Object.entries(instance.events)) {
-      wrapped.events[key] = (event: any) => {
+      wrapped.events[key] = (event: unknown) => {
         try {
           return handler(event);
         } catch (error) {
@@ -210,7 +210,7 @@ function wrapPluginInstance(
     wrapped.api = {};
     for (const [key, value] of Object.entries(instance.api)) {
       if (typeof value === 'function') {
-        wrapped.api[key] = (...args: any[]) => {
+        wrapped.api[key] = (...args: unknown[]) => {
           try {
             return value(...args);
           } catch (error) {

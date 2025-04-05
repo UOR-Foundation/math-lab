@@ -6,9 +6,9 @@
 
 import { 
   PluginManifest, 
-  PluginInstance, 
   PluginAPI,
   PluginManagerOptions,
+  PluginLoaderOptions,
   DashboardAPI,
   PluginStorageAPI,
   PluginEventAPI,
@@ -25,7 +25,7 @@ import { validateManifest } from './validator';
 export class PluginManager {
   private options: PluginManagerOptions;
   private dashboard: DashboardAPI;
-  private mathJs: any;
+  private mathJs: unknown;
   private storage: PluginStorageAPI;
   private events: PluginEventAPI;
   private ui: PluginUIAPI;
@@ -43,7 +43,7 @@ export class PluginManager {
    */
   constructor(
     dashboard: DashboardAPI,
-    mathJs: any,
+    mathJs: unknown,
     storage: PluginStorageAPI,
     events: PluginEventAPI,
     ui: PluginUIAPI,
@@ -91,7 +91,7 @@ export class PluginManager {
    * @param options Loader options
    * @returns Promise resolving when the plugin is loaded and initialized
    */
-  public async loadPlugin(id: string, options?: any): Promise<void> {
+  public async loadPlugin(id: string, options?: PluginLoaderOptions): Promise<void> {
     try {
       // First check if the plugin is already registered
       const existingPlugin = pluginRegistry.getPlugin(id);
@@ -105,7 +105,12 @@ export class PluginManager {
       const instance = await loadPlugin(id, options);
       
       // Create plugin API
-      const api = this.createApiForPlugin(existingPlugin?.manifest || instance.manifest);
+      const manifestToUse = existingPlugin?.manifest || 
+        // TypeScript needs help here to understand the structure
+        (instance as unknown as { manifest?: PluginManifest }).manifest || 
+        { id, name: id, version: '0.0.0', author: { name: 'Unknown' }, license: 'Unknown', description: 'Unknown', entryPoint: '', compatibility: { mathJs: '*', dashboard: '*' } };
+      
+      const api = this.createApiForPlugin(manifestToUse);
       this.pluginApis.set(id, api);
       
       // Initialize the plugin
@@ -214,7 +219,15 @@ export class PluginManager {
    * 
    * @returns Array of plugin information
    */
-  public getAllPlugins(): any[] {
+  public getAllPlugins(): Array<{
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: { name: string; email?: string; url?: string };
+    enabled: boolean;
+    status: string;
+  }> {
     return pluginRegistry.getAllPlugins().map(entry => ({
       id: entry.id,
       name: entry.manifest.name,
@@ -231,7 +244,14 @@ export class PluginManager {
    * 
    * @returns Array of enabled plugin information
    */
-  public getEnabledPlugins(): any[] {
+  public getEnabledPlugins(): Array<{
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: { name: string; email?: string; url?: string };
+    status: string;
+  }> {
     return pluginRegistry.getEnabledPlugins().map(entry => ({
       id: entry.id,
       name: entry.manifest.name,
@@ -248,7 +268,25 @@ export class PluginManager {
    * @param id Plugin ID
    * @returns Plugin details or undefined if not found
    */
-  public getPluginDetails(id: string): any | undefined {
+  public getPluginDetails(id: string): {
+    id: string;
+    name: string;
+    version: string;
+    description: string;
+    author: { name: string; email?: string; url?: string };
+    license: string;
+    repository?: string;
+    keywords?: string[];
+    enabled: boolean;
+    status: string;
+    dependencies: Array<{
+      id: string;
+      name: string;
+      version: string;
+      optional?: boolean;
+    }>;
+    components: number;
+  } | undefined {
     const entry = pluginRegistry.getPlugin(id);
     
     if (!entry) {
@@ -300,7 +338,7 @@ export class PluginManager {
 // Export a factory function to create the plugin manager
 export function createPluginManager(
   dashboard: DashboardAPI,
-  mathJs: any,
+  mathJs: unknown,
   storage: PluginStorageAPI,
   events: PluginEventAPI,
   ui: PluginUIAPI,

@@ -29,8 +29,8 @@ describe('Manifest Validator', () => {
   });
   
   it('should reject a manifest missing required fields', () => {
-    const invalidManifest = { ...validManifest };
-    delete (invalidManifest as any).name;
+    const invalidManifest = { ...validManifest } as Partial<PluginManifest>;
+    delete invalidManifest.name;
     
     expect(() => {
       validateManifest(invalidManifest as PluginManifest);
@@ -111,7 +111,7 @@ describe('Manifest Validator', () => {
           {
             id: 'main-panel',
             title: 'Main Panel',
-            position: 'invalid-position' as any,
+            position: 'invalid-position' as 'main',
           }
         ]
       }
@@ -130,7 +130,7 @@ describe('Manifest Validator', () => {
           {
             id: 'invalid-vis',
             name: 'Invalid Visualization',
-            type: 'invalid-type' as any,
+            type: 'invalid-type' as 'chart',
             supportsData: ['series']
           }
         ]
@@ -145,7 +145,7 @@ describe('Manifest Validator', () => {
   it('should reject manifests with invalid permissions', () => {
     const invalidManifest: PluginManifest = {
       ...validManifest,
-      permissions: ['storage', 'invalid-permission' as any]
+      permissions: ['storage', 'invalid-permission' as 'storage']
     };
     
     expect(() => {
@@ -157,7 +157,7 @@ describe('Manifest Validator', () => {
     const invalidManifest: PluginManifest = {
       ...validManifest,
       resources: {
-        cpu: 'extreme' as any
+        cpu: 'extreme' as 'low'
       }
     };
     
