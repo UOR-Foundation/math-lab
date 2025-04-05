@@ -1,10 +1,12 @@
 import { Middleware } from '@reduxjs/toolkit';
+import { storageManager, StorageLayer } from '../../core/storage';
 
 // Define the configuration for which parts of the state to persist
 export interface PersistenceConfig {
   key: string;
   whitelist?: string[];
   blacklist?: string[];
+  storageLayer?: StorageLayer;
 }
 
 // Default configuration
@@ -12,15 +14,8 @@ const defaultConfig: PersistenceConfig = {
   key: 'mathlab-state',
   // By default, we'll persist everything except for loading states and ephemeral UI state
   blacklist: ['ui.isLoading', 'ui.notifications'],
+  storageLayer: StorageLayer.LOCAL,
 };
-
-// Helper function to get nested property from an object using a string path
-// Commented out for now as it's not directly used, but keeping for future use
-/*
-const getNestedProperty = (obj: any, path: string): any => {
-  return path.split('.').reduce((prev, curr) => (prev ? prev[curr] : undefined), obj);
-};
-*/
 
 // Helper function to check if a state path should be persisted
 const shouldPersistPath = (path: string, config: PersistenceConfig): boolean => {
@@ -64,15 +59,14 @@ const filterState = (state: StateObject, config: PersistenceConfig): StateObject
 export const createPersistenceMiddleware = (
   config: PersistenceConfig = defaultConfig
 ): Middleware => {
+  const storageKey = config.key;
+  const storageLevel = config.storageLayer || StorageLayer.LOCAL;
+  
   return store => {
     // Load persisted state on initialization
     try {
-      const persistedStateJSON = localStorage.getItem(config.key);
-      if (persistedStateJSON) {
-        const persistedState = JSON.parse(persistedStateJSON);
-        // Dispatch an action to load the persisted state
-        store.dispatch({ type: 'REHYDRATE', payload: persistedState });
-      }
+      // State loading is now handled by loadPersistedState function
+      // and then loaded in the store configuration
     } catch (error) {
       console.error('Failed to load persisted state:', error);
     }
@@ -86,8 +80,10 @@ export const createPersistenceMiddleware = (
         const state = store.getState();
         // Filter the state based on configuration
         const filteredState = filterState(state, config);
-        // Save to localStorage
-        localStorage.setItem(config.key, JSON.stringify(filteredState));
+        // Save to storage system
+        storageManager.set(storageKey, filteredState, storageLevel).catch(error => {
+          console.error('Failed to persist state:', error);
+        });
       } catch (error) {
         console.error('Failed to persist state:', error);
       }
@@ -99,15 +95,38 @@ export const createPersistenceMiddleware = (
 
 // Create a function to load persisted state
 export const loadPersistedState = (config: PersistenceConfig = defaultConfig): StateObject | undefined => {
+  const storageKey = config.key;
+  const storageLevel = config.storageLayer || StorageLayer.LOCAL;
+  
   try {
-    const persistedStateJSON = localStorage.getItem(config.key);
-    if (persistedStateJSON) {
-      return JSON.parse(persistedStateJSON) as StateObject;
-    }
+    // Create promise to load state
+    const statePromise = storageManager.get<StateObject>(storageKey, storageLevel);
+    
+    // Convert to synchronous (this is fine for initialization)
+    let persistedState: StateObject | null = null;
+    
+    // Using a synchronous XHR to make this synchronous
+    // This is typically discouraged, but is acceptable for initialization
+    const xhr = new XMLHttpRequest();
+    xhr.open('GET', 'data:text/plain;charset=utf-8,', false);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        // When XHR completes, our promise should be resolved
+        statePromise.then(state => {
+          persistedState = state;
+        }).catch(error => {
+          console.error('Failed to load persisted state:', error);
+        });
+      }
+    };
+    xhr.send();
+    
+    // Return the loaded state or undefined
+    return persistedState || undefined;
   } catch (error) {
     console.error('Failed to load persisted state:', error);
+    return undefined;
   }
-  return undefined;
 };
 
 // Create a type for Redux actions

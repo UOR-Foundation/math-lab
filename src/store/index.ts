@@ -9,6 +9,7 @@ import {
   persistenceReducerEnhancer,
   loadPersistedState
 } from './middleware/persistenceMiddleware';
+import { StorageLayer } from '../core/storage';
 
 // Define persistence configuration
 const persistConfig = {
@@ -22,6 +23,8 @@ const persistConfig = {
     'ui.theme',      // Persist theme preference
     'ui.layout',     // Persist layout preference
   ],
+  // Use local storage (IndexedDB) for persistence
+  storageLayer: StorageLayer.LOCAL,
 };
 
 // Create the root reducer
