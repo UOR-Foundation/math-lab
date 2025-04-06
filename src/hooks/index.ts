@@ -23,6 +23,9 @@ export {
 // Theme hooks
 export { useTheme } from './useTheme';
 
+// Math-js hooks
+export { useMathJs } from './useMathJs';
+
 // Plugin system hooks
 export { usePluginSystem } from './usePluginSystem';
 export { 
