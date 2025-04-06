@@ -7,12 +7,37 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { 
   createPluginAPI,
+  createPermissionCheck
+} from '../../../../src/core/plugin-system/api';
+import {
   PluginManifest,
   DashboardAPI,
   PluginStorageAPI,
   PluginEventAPI,
-  PluginUIAPI
-} from '../../../../src/core/plugin-system';
+  PluginUIAPI,
+  PluginPermission
+} from '../../../../src/core/plugin-system/types';
+
+// Mock the sandbox module's hasPermission function
+vi.mock('../../../../src/core/plugin-system/sandbox', () => {
+  return {
+    hasPermission: (manifest: PluginManifest, permission: string) => {
+      if (!manifest.permissions) return false;
+      
+      if (manifest.permissions.includes(permission as PluginPermission)) {
+        return true;
+      }
+      
+      // Check for parent permission (e.g., 'storage' grants 'storage.local')
+      if (permission.includes('.')) {
+        const parentPermission = permission.split('.')[0] as PluginPermission;
+        return manifest.permissions.includes(parentPermission);
+      }
+      
+      return false;
+    }
+  };
+});
 
 // Mock implementations for testing
 const createMockDashboardAPI = (): DashboardAPI => ({
@@ -104,7 +129,7 @@ describe('Plugin API', () => {
   
   describe('Dashboard API', () => {
     it('should pass through dashboard API calls', () => {
-      // Create a minimal manifest
+      // Create a manifest with UI permission
       const manifest: PluginManifest = {
         id: 'test-plugin',
         name: 'Test Plugin',
@@ -118,7 +143,8 @@ describe('Plugin API', () => {
         },
         license: 'MIT',
         description: 'Test plugin for testing',
-        entryPoint: './index.js'
+        entryPoint: './index.js',
+        permissions: ['ui', 'computation'] // Need UI permission for registerTool/Panel/Visualization
       };
       
       // Create the API
@@ -388,7 +414,7 @@ describe('Plugin API', () => {
       
       // Should not call the UI API
       expect(uiAPI.showNotification).not.toHaveBeenCalled();
-      expect(console.warn).toHaveBeenCalledWith('Notification permission not granted');
+      expect(console.warn).toHaveBeenCalledWith('Notifications permission not granted');
       
       // Restore console.warn
       console.warn = originalWarn;
@@ -434,6 +460,65 @@ describe('Plugin API', () => {
       // Test showConfirm
       api.ui.showConfirm('Are you sure?');
       expect(uiAPI.showConfirm).toHaveBeenCalledWith('Are you sure?');
+    });
+  });
+  
+  describe('createPermissionCheck', () => {
+    it('should create a function that checks permissions', () => {
+      // Create a manifest with specific permissions
+      const manifest: PluginManifest = {
+        id: 'test-plugin',
+        name: 'Test Plugin',
+        version: '1.0.0',
+        compatibility: {
+          mathJs: '^1.0.0',
+          dashboard: '^1.0.0'
+        },
+        author: {
+          name: 'Test Author'
+        },
+        license: 'MIT',
+        description: 'Test plugin for testing',
+        entryPoint: './index.js',
+        permissions: ['storage', 'computation']
+      };
+      
+      // Create methods to be wrapped
+      const method = vi.fn().mockReturnValue('success');
+      const fallback = vi.fn().mockReturnValue('fallback');
+      
+      // Create permission check for a granted permission
+      const allowedFn = createPermissionCheck(manifest, method, 'storage', fallback);
+      const result1 = allowedFn('arg1', 'arg2');
+      
+      // Method should be called with args
+      expect(method).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(result1).toBe('success');
+      expect(fallback).not.toHaveBeenCalled();
+      
+      // Reset mocks
+      method.mockClear();
+      fallback.mockClear();
+      
+      // Create permission check for a denied permission
+      const deniedFn = createPermissionCheck(manifest, method, 'network', fallback);
+      const result2 = deniedFn('arg1', 'arg2');
+      
+      // Fallback should be called instead
+      expect(method).not.toHaveBeenCalled();
+      expect(fallback).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(result2).toBe('fallback');
+      
+      // Reset mocks
+      method.mockClear();
+      fallback.mockClear();
+      
+      // Create permission check for a denied permission without fallback
+      const noFallbackFn = createPermissionCheck(manifest, method, 'network');
+      
+      // Should throw an error
+      expect(() => noFallbackFn('arg1', 'arg2')).toThrow('Permission denied: network');
+      expect(method).not.toHaveBeenCalled();
     });
   });
 });

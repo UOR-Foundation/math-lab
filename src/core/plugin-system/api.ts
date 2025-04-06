@@ -13,6 +13,7 @@ import {
   PluginManifest,
   PluginPermission
 } from './types';
+import { hasPermission } from './sandbox';
 
 /**
  * Creates an API instance for a plugin
@@ -33,58 +34,105 @@ export function createPluginAPI(
   events: PluginEventAPI,
   ui: PluginUIAPI
 ): PluginAPI {
-  // Get plugin permissions
-  const permissions = manifest.permissions || [];
-  
   return {
     // Provide the dashboard API with permission checks
-    dashboard: createDashboardAPI(dashboard, permissions),
+    dashboard: createDashboardAPI(dashboard, manifest),
     
     // Provide the math-js library
     mathJs,
     
     // Provide the storage API with permission checks
-    storage: createStorageAPI(storage, manifest.id, permissions),
+    storage: createStorageAPI(storage, manifest),
     
     // Provide the event API with permission checks
-    events: createEventAPI(events, manifest.id, permissions),
+    events: createEventAPI(events, manifest),
     
     // Provide the UI API with permission checks
-    ui: createUIAPI(ui, permissions)
+    ui: createUIAPI(ui, manifest)
   };
+}
+
+/**
+ * Create an API method handler with permission check
+ * 
+ * @param manifest Plugin manifest
+ * @param method Method implementation
+ * @param permission Required permission
+ * @param fallback Fallback function to call if permission not granted
+ * @returns Method with permission check
+ */
+export function createPermissionCheck<T>(
+  manifest: PluginManifest,
+  method: T,
+  permission: PluginPermission,
+  fallback?: T
+): T {
+  // Use a type guard to resolve the typing issues
+  // We need to cast to unknown first to avoid the TS error
+  const permissionCheck = function(this: unknown, ...args: unknown[]): unknown {
+    if (hasPermission(manifest, permission)) {
+      // Call the method with the arguments
+      return (method as unknown as (...args: unknown[]) => unknown).apply(this, args);
+    }
+    
+    if (fallback) {
+      // Call the fallback with the arguments
+      return (fallback as unknown as (...args: unknown[]) => unknown).apply(this, args);
+    }
+    
+    throw new Error(`Permission denied: ${permission}`);
+  };
+  
+  return permissionCheck as unknown as T;
 }
 
 /**
  * Create a dashboard API with permission checks
  * 
  * @param dashboard Dashboard API implementation
- * @param permissions Plugin permissions
+ * @param manifest Plugin manifest
  * @returns Dashboard API with permission checks
  */
 function createDashboardAPI(
   dashboard: DashboardAPI,
-  _permissions: PluginPermission[]
+  manifest: PluginManifest
 ): DashboardAPI {
   return {
-    registerTool: (tool) => {
-      dashboard.registerTool(tool);
-    },
-    registerPanel: (panel) => {
-      dashboard.registerPanel(panel);
-    },
-    registerVisualization: (visualization) => {
-      // Check for visualization permission
-      dashboard.registerVisualization(visualization);
-    },
-    showResult: (result) => {
+    registerTool: createPermissionCheck<(tool: { id: string; name: string; icon: string; component: unknown }) => void>(
+      manifest,
+      (tool: { id: string; name: string; icon: string; component: unknown }) => dashboard.registerTool(tool),
+      'ui',
+      () => { console.warn('UI permission required to register tools'); }
+    ),
+    
+    registerPanel: createPermissionCheck<(panel: { id: string; component: unknown }) => void>(
+      manifest,
+      (panel: { id: string; component: unknown }) => dashboard.registerPanel(panel),
+      'ui',
+      () => { console.warn('UI permission required to register panels'); }
+    ),
+    
+    registerVisualization: createPermissionCheck<(visualization: { id: string; component: unknown }) => void>(
+      manifest,
+      (visualization: { id: string; component: unknown }) => dashboard.registerVisualization(visualization),
+      'ui',
+      () => { console.warn('UI permission required to register visualizations'); }
+    ),
+    
+    showResult: (result: unknown) => {
       dashboard.showResult(result);
     },
-    showError: (error) => {
+    
+    showError: (error: Error | string) => {
       dashboard.showError(error);
     },
-    updateProgressBar: (progress) => {
-      dashboard.updateProgressBar(progress);
-    }
+    
+    updateProgressBar: createPermissionCheck<(progress: number) => void>(
+      manifest,
+      (progress: number) => dashboard.updateProgressBar(progress),
+      'computation',
+      () => { console.warn('Computation permission required to update progress bar'); }
+    )
   };
 }
 
@@ -92,70 +140,102 @@ function createDashboardAPI(
  * Create a storage API with permission checks
  * 
  * @param storage Storage API implementation
- * @param pluginId Plugin ID
- * @param permissions Plugin permissions
+ * @param manifest Plugin manifest
  * @returns Storage API with permission checks
  */
 function createStorageAPI(
   storage: PluginStorageAPI,
-  pluginId: string,
-  _permissions: PluginPermission[]
+  manifest: PluginManifest
 ): PluginStorageAPI {
-  // Check if plugin has storage permission
-  const hasStoragePermission = _permissions.some((p: PluginPermission) => 
-    p === 'storage' || p === 'storage.local' || p === 'storage.cloud'
-  );
+  const pluginId = manifest.id;
+  const noOpStorageApi = {
+    getItem: async () => { 
+      throw new Error('Storage permission not granted'); 
+    },
+    setItem: async () => { 
+      throw new Error('Storage permission not granted'); 
+    },
+    removeItem: async () => { 
+      throw new Error('Storage permission not granted'); 
+    },
+    clear: async () => { 
+      throw new Error('Storage permission not granted'); 
+    },
+    keys: async () => { 
+      throw new Error('Storage permission not granted'); 
+      return [] as string[];
+    }
+  };
   
-  if (!hasStoragePermission) {
-    // Return no-op storage API
-    return {
-      getItem: async () => {
-        throw new Error('Storage permission not granted');
-      },
-      setItem: async () => {
-        throw new Error('Storage permission not granted');
-      },
-      removeItem: async () => {
-        throw new Error('Storage permission not granted');
-      },
-      clear: async () => {
-        throw new Error('Storage permission not granted');
-      },
-      keys: async () => {
-        throw new Error('Storage permission not granted');
-      }
-    };
-  }
+  // Create functions for each storage operation
+  const getItem = async (key: string): Promise<unknown> => {
+    return storage.getItem(`${pluginId}:${key}`);
+  };
+  
+  const setItem = async (key: string, value: unknown): Promise<void> => {
+    return storage.setItem(`${pluginId}:${key}`, value);
+  };
+  
+  const removeItem = async (key: string): Promise<void> => {
+    return storage.removeItem(`${pluginId}:${key}`);
+  };
+  
+  const clear = async (): Promise<void> => {
+    // Get all keys for this plugin
+    const allKeys = await storage.keys();
+    const pluginKeys = allKeys.filter(k => k.startsWith(`${pluginId}:`));
+    
+    // Remove all plugin keys
+    for (const key of pluginKeys) {
+      await storage.removeItem(key);
+    }
+  };
+  
+  const keys = async (): Promise<string[]> => {
+    // Get all keys for this plugin
+    const allKeys = await storage.keys();
+    const pluginKeys = allKeys.filter(k => k.startsWith(`${pluginId}:`));
+    
+    // Remove the plugin ID prefix
+    return pluginKeys.map(k => k.substring(pluginId.length + 1));
+  };
   
   // Namespace all storage keys with plugin ID to prevent conflicts
   return {
-    getItem: async (key) => {
-      return storage.getItem(`${pluginId}:${key}`);
-    },
-    setItem: async (key, value) => {
-      return storage.setItem(`${pluginId}:${key}`, value);
-    },
-    removeItem: async (key) => {
-      return storage.removeItem(`${pluginId}:${key}`);
-    },
-    clear: async () => {
-      // Get all keys for this plugin
-      const allKeys = await storage.keys();
-      const pluginKeys = allKeys.filter(k => k.startsWith(`${pluginId}:`));
-      
-      // Remove all plugin keys
-      for (const key of pluginKeys) {
-        await storage.removeItem(key);
-      }
-    },
-    keys: async () => {
-      // Get all keys for this plugin
-      const allKeys = await storage.keys();
-      const pluginKeys = allKeys.filter(k => k.startsWith(`${pluginId}:`));
-      
-      // Remove the plugin ID prefix
-      return pluginKeys.map(k => k.substring(pluginId.length + 1));
-    }
+    getItem: createPermissionCheck(
+      manifest,
+      getItem,
+      'storage.local',
+      noOpStorageApi.getItem
+    ),
+    
+    setItem: createPermissionCheck(
+      manifest,
+      setItem,
+      'storage.local',
+      noOpStorageApi.setItem
+    ),
+    
+    removeItem: createPermissionCheck(
+      manifest,
+      removeItem,
+      'storage.local',
+      noOpStorageApi.removeItem
+    ),
+    
+    clear: createPermissionCheck(
+      manifest,
+      clear,
+      'storage.local',
+      noOpStorageApi.clear
+    ),
+    
+    keys: createPermissionCheck(
+      manifest,
+      keys,
+      'storage.local',
+      noOpStorageApi.keys
+    )
   };
 }
 
@@ -163,18 +243,18 @@ function createStorageAPI(
  * Create an event API with permission checks
  * 
  * @param events Event API implementation
- * @param pluginId Plugin ID
- * @param permissions Plugin permissions
+ * @param manifest Plugin manifest
  * @returns Event API with permission checks
  */
 function createEventAPI(
   events: PluginEventAPI,
-  pluginId: string,
-  _permissions: PluginPermission[]
+  manifest: PluginManifest
 ): PluginEventAPI {
+  const pluginId = manifest.id;
+  
   return {
     subscribe: (eventName, callback) => {
-      // Wrap callback to add plugin ID to context
+      // Wrap callback to add plugin ID to context and add error handling
       const wrappedCallback = (data: unknown) => {
         try {
           callback(data);
@@ -186,6 +266,7 @@ function createEventAPI(
       // Subscribe to the event
       return events.subscribe(eventName, wrappedCallback);
     },
+    
     publish: (eventName, data) => {
       // Namespace custom events with plugin ID
       const namespacedEventName = eventName.startsWith('dashboard:')
@@ -213,28 +294,37 @@ function createEventAPI(
  * Create a UI API with permission checks
  * 
  * @param ui UI API implementation
- * @param permissions Plugin permissions
+ * @param manifest Plugin manifest
  * @returns UI API with permission checks
  */
 function createUIAPI(
   ui: PluginUIAPI,
-  _permissions: PluginPermission[]
+  manifest: PluginManifest
 ): PluginUIAPI {
-  // Check if plugin has notifications permission
-  const hasNotificationsPermission = _permissions.includes('notifications');
+  const noOpNotification = (): void => {
+    console.warn('Notifications permission not granted');
+  };
+  
+  const showNotification = (
+    message: string, 
+    options?: { type?: 'info' | 'success' | 'warning' | 'error'; duration?: number }
+  ): void => {
+    ui.showNotification(message, options);
+  };
   
   return {
-    showNotification: (message, options) => {
-      if (!hasNotificationsPermission) {
-        console.warn('Notification permission not granted');
-        return;
-      }
-      ui.showNotification(message, options);
-    },
-    showModal: (title, content) => {
+    showNotification: createPermissionCheck(
+      manifest,
+      showNotification,
+      'notifications',
+      noOpNotification
+    ),
+    
+    showModal: (title: string, content: unknown): Promise<void> => {
       return ui.showModal(title, content);
     },
-    showConfirm: (message) => {
+    
+    showConfirm: (message: string): Promise<boolean> => {
       return ui.showConfirm(message);
     }
   };

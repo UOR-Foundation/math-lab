@@ -127,7 +127,8 @@ export type PluginPermission =
   | 'computation.intensive'
   | 'network'
   | 'clipboard'
-  | 'notifications';
+  | 'notifications'
+  | 'ui';
 
 /**
  * Plugin instance returned by the plugin loader
